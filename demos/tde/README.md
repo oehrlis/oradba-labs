@@ -133,9 +133,11 @@ Two lab-only workarounds, both `SCOPE = MEMORY`, both printed when used:
 
 `make reset LAB=seclab` (flashback) does **not** revert:
 
-- the master key references in the control file (`V$DATABASE_KEY_INFO`) - verified 2026-11-13:
-  3 references before and after `make reset`. `solution.sql` handles them; for a database that
-  has never seen a keystore use `make rebuild LAB=seclab`
+- possibly the activation of the master key in the control file - open, check after a reset:
+  `SELECT con_id, masterkey_activated FROM v$database_key_info` must show `NO` for every container,
+  as on a freshly built lab. Note: `MASTERKEYID` is non-zero on every fresh database too (the internal
+  per-container database key exists without TDE) - it is not an indicator. `solution.sql` handles lost
+  master keys; for a database that has never seen a keystore use `make rebuild LAB=seclab`
 - spfile parameters `WALLET_ROOT` and `TDE_CONFIGURATION` - the spfile is not part of the
   flashback; after a flashback alone the instance still points at the old keystore
 - the keystore files under `WALLET_ROOT` (`ewallet.p12`, `cwallet.sso`, the `WITH BACKUP` copy) -

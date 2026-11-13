@@ -181,7 +181,7 @@ report() {
     for cat in ${CATEGORIES}; do
         [[ -f "${dir}/${cat}.na" ]] && continue
         printf '  %-10s %s\n' "${cat}" "$(count_of "${dir}" "${cat}")"
-        head -"${SAMPLES}" "${dir}/${cat}" | sed 's/^/             - /'
+        if ((SAMPLES > 0)); then head -"${SAMPLES}" "${dir}/${cat}" | sed 's/^/             - /'; fi
     done
 }
 

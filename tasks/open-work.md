@@ -18,6 +18,8 @@
 - [ ] `make up LAB=seclab` / `make up LAB=base26`, `make verify`, `make reset` - je einmal [P1] (due: 2026-11-14)
 - [ ] `make rebuild LAB=base26` (frisch, prueft das Setup ohne Legacy-Objekte, ~3 min) [P1] (due: 2026-11-14)
 - [ ] Demos `demos/verifier`, `demos/unified-audit`, `demos/tde` einmal pro Rolle durchspielen [P1] (due: 2026-11-14)
+- [ ] TDE: nach `tde` + `make reset LAB=seclab` pruefen `v$database_key_info.masterkey_activated` = NO
+  in allen Containern (frisches Lab: NO; `MASTERKEYID` ist immer gesetzt, kein Indikator) [P1] (due: 2026-11-14)
 
 ## Mo 2026-11-16 abend (M0b) - DOAG Di 2026-11-17
 
