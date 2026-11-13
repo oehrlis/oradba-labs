@@ -22,6 +22,11 @@ make down LAB=seclab           # containers gone, data kept
 make down LAB=seclab PURGE=1   # data gone too
 ```
 
+Does a release carry a feature - without building the demo? `make probe P='mfa_|_mfa'
+IMAGES="trivadis/ora_db:19.27.0.0 oracle-free-labs:latest"` reads error messages, binary and catalog
+scripts of local images (no database start); `LAB=seclab` adds the data dictionary of the running
+containers, `DIFF=1` shows what only one of two targets has.
+
 The first `make up` creates `labs/<name>/lab.env` from `lab.env.example` and generates the
 passwords. `lab.env` is git-ignored; image, version, ports, storage and passwords live only there.
 Keys added to `lab.env.example` later are appended to an existing `lab.env` and named - existing

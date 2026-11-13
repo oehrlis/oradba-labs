@@ -8,6 +8,7 @@ so the `labdb` hooks run unchanged.
 | --- | --- | --- |
 | `scripts/labctl.sh` | host | lab lifecycle behind the Makefile (list, up, down, reset, rebuild, status, connect, verify) |
 | `scripts/lab_verify.sh` | host | checks per lab container and connect strings |
+| `scripts/feature_probe.sh` | host | does a release carry a feature? traces in home (messages, binary, catalog) and dictionary; `--diff` / `--list` between releases (`make probe`) |
 | `scripts/create_lab_baseline.sh` | container | last startup hook: restore point `LAB_BASELINE` once |
 | `scripts/run_sql_script.sh` | container | SQL as SYSDBA in CDB or PDB with logging; passwords by env name via stdin |
 | `scripts/define_logging_*.sql`, `require_*.sql` | container | logging and container guards of every hook |

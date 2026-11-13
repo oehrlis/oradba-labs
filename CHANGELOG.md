@@ -27,6 +27,8 @@ All notable changes to this project are documented here. Format based on
 ### Added
 
 - `make rebuild LAB=<name>` (data gone, databases created again), `COMPOSE=` selector
+- `common/scripts/feature_probe.sh` / `make probe`: feature traces per release in home and
+  dictionary, `--diff` and `--list` between two releases (image mode needs no database)
 - `docs/architecture.md`: start here, process overview, repository boundaries, decisions E8-E14
 - Demos `demos/verifier`, `demos/unified-audit`, `demos/tde` (`requires: seclab`), mounted
   read-only at `/opt/oracle/demos` in seclab
