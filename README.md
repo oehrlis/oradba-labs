@@ -53,10 +53,12 @@ oradba-labs/
   `/opt/oracle/scripts/setup` and `/opt/oracle/scripts/startup`, the image's healthcheck. The image
   creates the database (19c: dbca, Free: on an empty data directory) and runs the hooks - the lab
   only provides them. The pattern and the scripts come from oracle-free-labs (`labdb`).
-- **Storage:** `LAB_STORAGE=bind` (default) keeps the data under `LAB_DATA_BASE/<lab>/<db>` on the
-  host (`~/oradba-labs-data`); `LAB_STORAGE=volume` uses named volumes with `nocopy`, so an image
-  with a prebuilt database does not pre-fill the volume. The path does not contain the image
-  version: the same data can be started with a newer image.
+- **Storage:** `LAB_STORAGE=bind` keeps the data under `LAB_DATA_BASE/<lab>/<db>` on the host
+  (`~/oradba-labs-data`). The path does not contain the image version: the same data can be started
+  with a newer image (tested: Free on the plain Oracle image, then on `oracle-free-labs:latest`).
+  `LAB_STORAGE=volume` is not supported yet: a `nocopy` volume is owned by root, and without
+  `nocopy` the Free image's prebuilt database is copied in and the setup hooks are skipped -
+  planned with Podman / cloud hosts (M5).
 - **Baseline and reset:** the last startup hook creates the guaranteed restore point
   `LAB_BASELINE` once. `make up` waits for healthy + baseline. `make reset` flashes every database
   of the lab back to it in parallel; `make rebuild` starts from empty data.

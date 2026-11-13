@@ -12,9 +12,9 @@
 # Notes......: - Thin wrapper around docker compose (podman later, COMPOSE=).
 #                The image does the database work: create or start, setup/
 #                and startup/ hooks (Oracle container pattern, E8).
-#              - Storage (E9): LAB_STORAGE=bind -> <LAB_DATA_BASE>/<lab>/<db>,
-#                volume -> named volumes with nocopy. Sets the DB*_DATA
-#                variables used in compose.yml.
+#              - Storage (E9): LAB_STORAGE=bind -> <LAB_DATA_BASE>/<lab>/<db>
+#                (volume: not supported yet, M5). Sets the DB*_DATA variables
+#                used in compose.yml.
 #              - reset = FLASHBACK DATABASE to LAB_BASELINE (created by the
 #                startup hook 90_lab_baseline.sh); rebuild = data gone, new.
 #              - Passwords never go to argv: sqlplus reads them from stdin.
@@ -174,8 +174,10 @@ storage_env() {
             export DB26_DBCONFIG="${base}/db26/dbconfig" LAB_VOLOPT=""
             ;;
         volume)
-            export DB19_DATA="db19data" DB26_ORADATA="db26oradata" DB26_DBCONFIG="db26dbconfig"
-            export LAB_VOLOPT=":nocopy"
+            # Decision 2026-11-13: bind only for now. A nocopy volume is owned by root (oracle
+            # cannot write), without nocopy the Free image's prebuilt DB is copied in and the
+            # setup hooks are skipped. Comes back with Podman / cloud hosts (M5).
+            die "LAB_STORAGE=volume is not supported yet - use bind (see docs/architecture.md, E9)"
             ;;
         *) die "LAB_STORAGE=${storage} in lab.env - use bind or volume" ;;
     esac

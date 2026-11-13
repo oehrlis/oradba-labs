@@ -11,8 +11,9 @@ All notable changes to this project are documented here. Format based on
   `docs/architecture.md`): data under `/opt/oracle/oradata` (19c `trivadis/ora_db` mapped to
   `/u01` + `INSTANCE_INIT`), configuration only through the image's `setup/` and `startup/`
   hooks, the image's own healthcheck
-- Storage per lab in `lab.env`: `LAB_STORAGE=bind` (default, `LAB_DATA_BASE/<lab>/<db>`) or
-  `volume` (named volumes with `nocopy`); the data path carries no image version
+- Storage per lab in `lab.env`: `LAB_STORAGE=bind` (`LAB_DATA_BASE/<lab>/<db>`); the data path
+  carries no image version. `volume` is rejected with a message for now (nocopy volume owned by
+  root, without nocopy the prebuilt Free DB skips the setup hooks) - planned with M5
 - Hooks and shared scripts taken 1:1 from oracle-free-labs `labdb` and `config/common/scripts`,
   mounted at the same path `/opt/oracle/common/scripts`; `common/sql/` merged into
   `common/scripts/`

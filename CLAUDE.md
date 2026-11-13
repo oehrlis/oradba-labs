@@ -26,7 +26,7 @@ decision E8+ in `lab-architecture.md`.
   (no private domains, hostnames, OCIDs)
 - Ports bound to `127.0.0.1`, never 1521 (other labs run there) - one port range per lab
 - Mechanics = oracle-free-labs (decisions E8-E14 in `docs/architecture.md`): Oracle container
-  contract, data via bind mount or `nocopy` volume, configuration only through the image's
+  contract, data via bind mount (volume: not yet, M5), configuration only through the image's
   `setup/` + `startup/` hooks - no own init layer. Any mechanism not fixed there: ask first
 - Shared SQL and scripts only in `common/scripts/` (same path as oracle-free-labs:
   `/opt/oracle/common/scripts`)
