@@ -33,6 +33,8 @@ All notable changes to this project are documented here. Format based on
 
 ### Removed
 
+- `common_db_config.sql`: legacy common profiles, password verify function and common users
+  (project-specific names from oracle-free-labs, not needed by any lab)
 - Own setup layer of 0.1.0: `labctl` running setup hooks, marker files `.oradba-labs.setup` and
   `/tmp/oradba-labs.ready`, own healthcheck, `oradba.labs.*` compose labels, `lab_sql.sh`,
   `lab_ready.sh`, `create_pdb.sh`, `enable_unified_audit.sh` - all of it worked around named
