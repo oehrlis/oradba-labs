@@ -82,8 +82,8 @@ DIFF ?=
 PROBE_TARGETS = $(foreach i,$(IMAGES),-i $(i)) $(if $(LAB),$(foreach c,$(shell docker ps --filter label=com.docker.compose.project=oradba-labs-$(LAB) --format '{{.Names}}' | sort),-c $(c)),)
 
 .PHONY: probe
-probe: ## Feature traces: make probe P='mfa_|_mfa' [LAB=seclab] [IMAGES="img1 img2"] [DIFF=1]
-	@test -n "$(P)" || { echo "ERROR: P=<regex> missing" >&2; exit 1; }
+probe: ## Feature traces: make probe [P='mfa_|_mfa'] [LAB=seclab] [IMAGES="img1 img2"] [DIFF=1] - no P: everything
+	@test -n "$(strip $(PROBE_TARGETS))" || { echo "ERROR: IMAGES=... or LAB=... missing" >&2; exit 1; }
 	@common/scripts/feature_probe.sh $(if $(filter 1,$(DIFF)),--diff,) $(PROBE_TARGETS) '$(P)'
 
 # ==============================================================================

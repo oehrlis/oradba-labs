@@ -35,7 +35,29 @@ make probe P='mfa_|_mfa' LAB=seclab
 diff <(common/scripts/feature_probe.sh --list -i IMAGE_A 'mfa') <(common/scripts/feature_probe.sh --list -i IMAGE_B 'mfa')
 ```
 
-`P` is a case-insensitive extended regex. Be specific for the binary: `mfa` alone also matches kernel
+`P` is optional. Without it the probe compares **everything** - the question "what is new between these
+two releases?" when you do not know yet what to look for:
+
+```bash
+make probe IMAGES="container-registry.oracle.com/database/free:23.26.2.0 container-registry.oracle.com/database/free:latest" DIFF=1
+```
+
+```text
+  messages   new in B: 107, removed in B: 3, text changed: 53
+             + B 05172, 00000, "Cannot enable shard DDL as a local user"
+             ~ B 03410, 00000, "The time unit for DATEDIFF/TIMESTAMPDIFF or DATEADD is invalid."
+             ~ B 08601, 0000, "Assertion (%s.%s) violated."
+  binary     only A: 781, only B: 3712
+  catalog    only A: 0, only B: 120
+```
+
+Messages are compared by number (new, removed, text changed) - the most readable category, it reads like
+release notes (new: DATEADD, sharding, vector; renamed: "SQL assertion" -> "Assertion"). The catalog shows
+new scripts and bug fix scripts. The binary is noisy in this mode (fragments of longer strings) - use it
+to confirm a name found elsewhere. Without a pattern each list shows 10 lines (`-n N`); `--list` writes
+everything for your own diff. About 6 s for two images.
+
+With a pattern, `P` is a case-insensitive extended regex. Be specific for the binary: `mfa` alone also matches kernel
 symbols like `ksfdomfat`; `mfa_|_mfa|multi.?factor` does not.
 
 ## Example - MFA across 26ai Free releases (2026-11-13)

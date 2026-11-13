@@ -38,6 +38,7 @@ VERSION="0.1.0"
 DRY_RUN=${DRY_RUN:-"FALSE"}
 COMPOSE=${COMPOSE:-"docker"}
 SAMPLES=5
+SAMPLES_SET=""
 DIFF="FALSE"
 LIST="FALSE"
 CATEGORIES="messages binary catalog parameters hidden objects columns"
@@ -46,11 +47,12 @@ WORK=""
 
 usage() {
     cat <<EOF
-Usage: ${SCRIPT_NAME} [-i IMAGE]... [-c CONTAINER]... [--diff] [-n N] PATTERN
+Usage: ${SCRIPT_NAME} [-i IMAGE]... [-c CONTAINER]... [--diff] [-n N] [PATTERN]
 
   Check whether an Oracle Database release carries a feature, or what changed
   between two releases (${VERSION}). PATTERN: case-insensitive extended regex -
   be specific for the binary (e.g. 'mfa_|_mfa|multi.?factor', not 'mfa').
+  Without PATTERN: everything - "what is new between these two releases?" (--diff).
 
 Options:
   -i, --image IMAGE       local image - files only, no database start
@@ -82,13 +84,20 @@ cleanup() { if [[ -n "${WORK}" ]]; then rm -rf "${WORK}"; fi; }
 # shellcheck disable=SC2016  # expands inside the container
 FILE_PROBE='
 set -u
-p="${PROBE_PATTERN}"
+p="${PROBE_PATTERN:-}"
 oh="${ORACLE_HOME:-}"
 if [ -z "$oh" ]; then echo "ERROR ORACLE_HOME unset in target"; exit 0; fi
 echo "HOME $oh"
 # 19c: line 1 "Release 19.0.0.0.0", line 2 "Version 19.27.0.0.0" - prefer Version
 [ -x "$oh/bin/sqlplus" ] && "$oh/bin/sqlplus" -V 2>/dev/null | sed -nE "s/^Version ([0-9.]+).*/RELEASE \1/p; s/.*Release ([0-9.]+).*/RELEASE \1/p" | tail -1
 msg="$oh/rdbms/mesg/oraus.msg"
+if [ -z "$p" ]; then
+  # no pattern: everything - all messages, all identifiers with "_" in the binary, all catalog scripts
+  [ -f "$msg" ] && grep -E "^[0-9]+," "$msg" | sed -E "s/[[:space:]]+/ /g; s/^/ITEM messages /"
+  [ -f "$oh/bin/oracle" ] && grep -aoE "[a-z][a-z0-9_\$#]*_[a-z0-9_\$#]+" "$oh/bin/oracle" | awk "length >= 6" | sort -u | sed "s/^/ITEM binary /"
+  [ -d "$oh/rdbms/admin" ] && find "$oh/rdbms/admin" \( -name "*.sql" -o -name "*.plb" \) | sed "s|.*/||" | sort -u | sed "s/^/ITEM catalog /"
+  exit 0
+fi
 # a message matches if its header line or its *Cause / *Action text matches
 [ -f "$msg" ] && awk -v p="$p" '"'"'BEGIN { IGNORECASE = 1; lp = tolower(p) }
   /^[0-9]+,/ { if (hit && hdr != "") print hdr; hdr = $0; hit = 0 }
@@ -105,7 +114,8 @@ exit 0
 # Output..: SQL*Plus script on stdout, printing "ITEM <category> <value>"
 # ------------------------------------------------------------------------------
 sql_text() {
-    local p="${1//\'/\'\'}" # single quotes doubled for the SQL literal
+    local p="${1:-.}" # no pattern: everything
+    p="${p//\'/\'\'}" # single quotes doubled for the SQL literal
     cat <<EOF
 SET HEADING OFF FEEDBACK OFF PAGESIZE 0 LINESIZE 400 TRIMSPOOL ON TAB OFF
 SELECT 'VERSION '||version_full FROM v\$instance;
@@ -126,11 +136,12 @@ EOF
 # Args....: $1 kind (image|container), $2 target, $3 pattern, $4 output dir
 # ------------------------------------------------------------------------------
 collect() {
-    local kind="$1" target="$2" pattern="$3" dir="$4" out line rest cat
+    local kind="$1" target="$2" pattern="$3" dir="$4" raw cat
     mkdir -p "${dir}"
+    raw="${dir}/raw"
     if [[ "${kind}" == "image" ]]; then
-        if ! out=$(${COMPOSE} run --rm --pull never --entrypoint bash -e PROBE_PATTERN="${pattern}" \
-            "${target}" -c "${FILE_PROBE}" 2>&1); then
+        if ! ${COMPOSE} run --rm --pull never --entrypoint bash -e PROBE_PATTERN="${pattern}" \
+            "${target}" -c "${FILE_PROBE}" >"${raw}" 2>&1; then
             log_error "cannot read image ${target} (local images only - pull it first)"
             return 1
         fi
@@ -139,26 +150,20 @@ collect() {
             log_error "no container ${target}"
             return 1
         fi
-        out=$(${COMPOSE} exec -i -e PROBE_PATTERN="${pattern}" "${target}" bash -c "${FILE_PROBE}" 2>&1 </dev/null)
+        ${COMPOSE} exec -i -e PROBE_PATTERN="${pattern}" "${target}" bash -c "${FILE_PROBE}" >"${raw}" 2>&1 </dev/null
         # shellcheck disable=SC2016  # expands inside the container
-        out+=$'\n'$(sql_text "${pattern}" | ${COMPOSE} exec -i "${target}" \
-            bash -c '"${ORACLE_HOME}/bin/sqlplus" -s -L / as sysdba' 2>&1 || true)
+        sql_text "${pattern}" | ${COMPOSE} exec -i "${target}" \
+            bash -c '"${ORACLE_HOME}/bin/sqlplus" -s -L / as sysdba' >>"${raw}" 2>&1 || true
     fi
-    : >"${dir}/version"
     for cat in ${CATEGORIES}; do : >"${dir}/${cat}"; done
-    while IFS= read -r line; do
-        case "${line}" in
-            "ITEM "*)
-                rest="${line#ITEM }"
-                cat="${rest%% *}"
-                printf '%s\n' "${rest#* }" >>"${dir}/${cat}"
-                ;;
-            "VERSION "*) printf '%s\n' "${line#VERSION }" >"${dir}/version" ;;
-            "RELEASE "*) [[ -s "${dir}/version" ]] || printf '%s\n' "${line#RELEASE }" >"${dir}/version" ;;
-            "HOME "*) ;;
-            "ERROR "* | ORA-* | SP2-*) log_error "${target}: ${line}" ;;
-        esac
-    done <<<"${out}"
+    # one pass over the raw output: items per category, version, errors (no per-line shell loop)
+    awk -v d="${dir}" '
+        /^ITEM / { c = $2; sub(/^ITEM [^ ]+ /, ""); print > (d "/" c); next }
+        /^VERSION / { sub(/^VERSION /, ""); v = $0; next }
+        /^RELEASE / { sub(/^RELEASE /, ""); if (v == "") r = $0; next }
+        /^(ERROR |ORA-|SP2-)/ { print > "/dev/stderr" }
+        END { print (v != "" ? v : (r != "" ? r : "?")) > (d "/version") }
+    ' "${raw}"
     for cat in ${CATEGORIES}; do sort -u -o "${dir}/${cat}" "${dir}/${cat}"; done
     # image mode has no dictionary - mark those categories as not applicable
     if [[ "${kind}" == "image" ]]; then
@@ -185,17 +190,48 @@ report() {
     done
 }
 
+# print at most LIMIT lines of stdin with a prefix, then a "... N more" line
+show_limited() {
+    local prefix="$1" limit="$2" all n
+    all=$(cat)
+    [[ -n "${all}" ]] || return 0
+    n=$(grep -c . <<<"${all}")
+    if ((limit > 0 && n > limit)); then
+        # here-string, not a pipe into head: a long list would SIGPIPE the writer under pipefail
+        head -"${limit}" <<<"${all}" | sed "s/^/${prefix}/"
+        printf '             ... %s more (--list for all)\n' "$((n - limit))"
+    else
+        printf '%s\n' "${all}" | sed "s/^/${prefix}/"
+    fi
+}
+
 diff_report() {
-    local a="$1" la="$2" b="$3" lb="$4" cat only_a only_b
+    local a="$1" la="$2" b="$3" lb="$4" limit="$5" cat only_a only_b na nb nc
     echo "== diff: A = ${la} ($(cat "${a}/version")), B = ${lb} ($(cat "${b}/version"))"
     for cat in ${CATEGORIES}; do
         if [[ -f "${a}/${cat}.na" || -f "${b}/${cat}.na" ]]; then continue; fi
+        if [[ "${cat}" == "messages" ]]; then
+            # compare by message number in ONE awk pass: N = new in B, R = removed in B, C = text changed
+            awk -F, '
+                NR == FNR { a[$1] = $0; next }
+                { b[$1] = $0; if (!($1 in a)) print "N\t" $0; else if (a[$1] != $0) print "C\t" $0 }
+                END { for (k in a) if (!(k in b)) print "R\t" a[k] }
+            ' "${a}/${cat}" "${b}/${cat}" | sort >"${b}/msgdiff"
+            nb=$(grep -c '^N' "${b}/msgdiff" || true)
+            na=$(grep -c '^R' "${b}/msgdiff" || true)
+            nc=$(grep -c '^C' "${b}/msgdiff" || true)
+            printf '  %-10s new in B: %s, removed in B: %s, text changed: %s\n' "${cat}" "${nb}" "${na}" "${nc}"
+            sed -n 's/^N\t//p' "${b}/msgdiff" | show_limited '             + B ' "${limit}"
+            sed -n 's/^R\t//p' "${b}/msgdiff" | show_limited '             - A ' "${limit}"
+            sed -n 's/^C\t//p' "${b}/msgdiff" | show_limited '             ~ B ' "${limit}"
+            continue
+        fi
         only_a=$(comm -23 "${a}/${cat}" "${b}/${cat}")
         only_b=$(comm -13 "${a}/${cat}" "${b}/${cat}")
         printf '  %-10s only A: %s, only B: %s\n' "${cat}" \
             "$(printf '%s' "${only_a}" | grep -c . || true)" "$(printf '%s' "${only_b}" | grep -c . || true)"
-        if [[ -n "${only_a}" ]]; then printf '%s\n' "${only_a}" | sed 's/^/             - A /'; fi
-        if [[ -n "${only_b}" ]]; then printf '%s\n' "${only_b}" | sed 's/^/             + B /'; fi
+        printf '%s' "${only_b}" | show_limited '             + B ' "${limit}"
+        printf '%s' "${only_a}" | show_limited '             - A ' "${limit}"
     done
 }
 
@@ -221,6 +257,7 @@ main() {
                 ;;
             -n | --samples)
                 SAMPLES="${2:?missing number}"
+                SAMPLES_SET="${SAMPLES}"
                 shift 2
                 ;;
             -d | --dry-run)
@@ -243,7 +280,9 @@ main() {
                 ;;
         esac
     done
-    [[ -n "${pattern}" ]] || { log_error "PATTERN missing"; usage; exit 1; }
+    if [[ -z "${pattern}" ]]; then
+        echo "INFO: no PATTERN - full comparison (all messages, binary identifiers, catalog, dictionary)" >&2
+    fi
     [[ ${#TARGETS[@]} -gt 0 ]] || { log_error "no target - use -i IMAGE or -c CONTAINER"; exit 1; }
     if [[ "${DIFF}" == "TRUE" && ${#TARGETS[@]} -ne 2 ]]; then
         log_error "--diff needs exactly two targets"
@@ -272,7 +311,10 @@ main() {
         exit 0
     fi
     if [[ "${DIFF}" == "TRUE" ]]; then
-        diff_report "${dirs[0]}" "${labels[0]}" "${dirs[1]}" "${labels[1]}"
+        # with a pattern the lists are short - show all; without, SAMPLES per side (default 10)
+        local limit=0
+        if [[ -z "${pattern}" ]]; then limit="${SAMPLES_SET:-10}"; fi
+        diff_report "${dirs[0]}" "${labels[0]}" "${dirs[1]}" "${labels[1]}" "${limit}"
         exit 0
     fi
     for i in "${!dirs[@]}"; do report "${labels[${i}]}" "${dirs[${i}]}"; done
