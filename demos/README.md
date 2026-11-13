@@ -39,5 +39,9 @@ baseline (restore point `LAB_BASELINE`).
 <!-- markdownlint-disable MD013 MD060 -->
 | Demo | Lives in | requires | Notes |
 | --- | --- | --- | --- |
-| oracle-privesc module 4 (external table preprocessor) | `talks-privesc/talks/oracle-privesc/demos/m4_preprocessor/` | `seclab` | `detect.sql`, `fix.sql` there; `DEMOPDB` exists on both databases |
+| oracle-privesc module 4 (external table preprocessor) | talk repository | `seclab` | `detect.sql`, `fix.sql` there; `DEMOPDB` exists on both databases |
+| `verifier` - password verifiers, 10G hashes | `demos/verifier/` | `seclab` (db19) | changes `sqlnet.ora`: run `reset.sql`, `make reset` does not revert files |
+| `unified-audit` - policy with paired NOAUDIT | `demos/unified-audit/` | `seclab` (db19, db26) | no restart |
+| `tde` - WALLET_ROOT, keystore, encrypted tablespace | `demos/tde/` | `seclab` (db26) | restart in the solution and in `reset.sql` |
+| deep-data security demos | talk repository | `base26` (`LABPDB1`) | until DOAG on `labdb`; change: container `base26-db26`, port 1571 |
 <!-- markdownlint-restore -->

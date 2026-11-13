@@ -1,5 +1,7 @@
 # ------------------------------------------------------------------------------
-# oradba-labs - base26: Oracle AI Database 26ai Free, CDB FREE + FREEPDB1
+# oradba-labs - base26: Oracle AI Database 26ai Free, CDB FREE + LABPDB1 (= labdb)
+# Contract: Oracle container pattern (E8). Storage: LAB_STORAGE=bind|volume (E9),
+# the DB*_DATA / DB*_ORADATA variables are set by common/scripts/labctl.sh.
 # Image, version, ports and passwords: lab.env (copy of lab.env.example)
 # ------------------------------------------------------------------------------
 name: oradba-labs-base26
@@ -13,29 +15,21 @@ services:
     environment:
       ORACLE_PWD: ${ORACLE_PWD}
       ENABLE_ARCHIVELOG: "true"
+      TZ: ${TZ}
     volumes:
-      - db26data:/opt/oracle/oradata
-      - ../../common:/opt/oradba-labs/common:ro
-      # setup hooks run once via labctl.sh after the first start (the Free image
-      # starts a prebuilt database and would skip them)
-      - ./setup/db26:/opt/oradba-labs/setup:ro
+      - ${DB26_ORADATA}:/opt/oracle/oradata${LAB_VOLOPT:-}
+      - ${DB26_DBCONFIG}:/opt/oracle/dbconfig${LAB_VOLOPT:-}
+      - ${DB26_LOGS}:/opt/oracle/scripts/logs
+      - ${LAB_SHARED}:/opt/oracle/data
+      - ../../common/scripts:/opt/oracle/common/scripts:ro
+      - ./setup/db26:/opt/oracle/scripts/setup:ro
       - ./startup/db26:/opt/oracle/scripts/startup:ro
     ports:
       - "127.0.0.1:${DB26_PORT}:1521"
     mem_limit: ${DB26_MEM}
-    healthcheck:
-      test: ["CMD-SHELL", "\"$${SCRIPT_BASE_DIR}/$${CHECK_DB_FILE}\" >/dev/null && test -f /tmp/oradba-labs.ready"]
-      interval: 20s
-      timeout: 30s
-      retries: 3
-      start_period: 30m
-    labels:
-      oradba.labs.kind: free
-      oradba.labs.sid: FREE
-      oradba.labs.pdbs: FREEPDB1
-      oradba.labs.port: ${DB26_PORT}
-      oradba.labs.datadir: /opt/oracle/oradata
 
+# used only with LAB_STORAGE=volume
 volumes:
-  db26data:
+  db26oradata:
+  db26dbconfig:
 # --- EOF ----------------------------------------------------------------------

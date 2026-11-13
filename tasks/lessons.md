@@ -28,3 +28,15 @@ Reset per Guaranteed Restore Point statt des bestehenden Neuaufbaus.
 
 verify: jede Abweichung von oracle-free-labs/docker-samples in `labs/*/compose.yml` ist in der
 Klaerungsrunde genannt und von Stefan entschieden
+
+## 2026-11-13 - Einzel-Commit nahm gestagte Arbeit mit
+
+**Was passiert ist:** Fuer einen Commit nur von `docs/architecture.md` lagen im Index noch `git rm` /
+`git mv` aus dem laufenden Umbau. `git add <datei> && git commit` nahm alles mit, gepusht - trotz
+sichtbarem `--stat`. `main` war halb umgebaut, korrigiert mit `5b58d79` (Revert der Loeschungen).
+
+**Regel:** Vor einem Teil-Commit `git diff --cached --name-only` lesen - steht mehr drin als gemeint,
+`git commit <pfad>` (nur dieser Pfad) oder vorher aus dem Index nehmen. Ein `--stat`, das mehr zeigt
+als erwartet, ist ein Stopp, kein Hinweis.
+
+verify: `git diff --cached --name-only` vor jedem Commit = genau die gemeinten Pfade

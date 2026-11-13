@@ -6,72 +6,80 @@ Today on Docker, later (M5) the same labs on OCI.
 Defensive scope: own, isolated lab databases for Oracle Database security work - hardening,
 audit, detection and the countermeasure behind every demo.
 
+**Start here:** [docs/architecture.md](docs/architecture.md) - which repository does what, how a lab
+is built, and the decisions behind it ("I need ... -> decision -> build").
+
 ## Quick start
 
 ```bash
-make list                     # base19, base26, seclab
-make up LAB=seclab            # start, wait until ready, take baseline, verify
-make verify LAB=seclab        # checks + connect strings
+make list                      # base19, base26, seclab
+make up LAB=seclab             # start, wait until healthy + baseline, verify
+make verify LAB=seclab         # checks + connect strings
 make connect LAB=seclab DB=db19
-make reset LAB=seclab         # back to the baseline (FLASHBACK DATABASE), < 5 min
-make down LAB=seclab          # containers gone, data volumes kept
-make down LAB=seclab PURGE=1  # data volumes gone too
+make reset LAB=seclab          # back to the baseline (FLASHBACK DATABASE), about 1 min
+make rebuild LAB=seclab        # data gone, databases created again
+make down LAB=seclab           # containers gone, data kept
+make down LAB=seclab PURGE=1   # data gone too
 ```
 
 The first `make up` creates `labs/<name>/lab.env` from `lab.env.example` and generates the
-passwords. `lab.env` is git-ignored; image, version, ports and passwords live only there.
+passwords. `lab.env` is git-ignored; image, version, ports, storage and passwords live only there.
+Keys added to `lab.env.example` later are appended to an existing `lab.env` and named - existing
+values are never changed.
 
 ## Layout
 
 ```text
 oradba-labs/
-  Makefile              # make list | up | down | reset | status | connect | verify LAB=<name>
+  Makefile              # make list | up | down | reset | rebuild | status | connect | verify LAB=<name>
   catalogue.md          # Lab | purpose | images/versions | consumer
-  common/sql/           # shared SQL, once (SCOTT, TVD_HR, PDB, lab accounts)
-  common/scripts/       # labctl.sh (lifecycle), lab_verify.sh, in-container helpers
+  docs/architecture.md  # big picture, repository boundaries, decisions
+  common/scripts/       # shared SQL + scripts, once (from oracle-free-labs), labctl.sh, lab_verify.sh
   labs/<name>/
-    lab.env.example     # image + version + ports + password placeholders
-    compose.yml         # services carry oradba.labs.* labels (kind, sid, pdbs, port)
-    setup/<db>/         # init hooks, once at database creation
-    startup/<db>/       # init hooks, at every start
+    lab.env.example     # image + version + ports + storage + password placeholders
+    compose.yml         # Oracle container contract: oradata, scripts/setup, scripts/startup
+    setup/<db>/         # hooks, once at database creation (run by the image)
+    startup/<db>/       # hooks, at every start (run by the image), last: LAB_BASELINE
     verify.sh           # healthy + connection test, prints connect strings
     README.md
-  demos/README.md       # demo convention (requires: <lab>, setup/run/reset)
+  demos/                # demos used more than once (requires: <lab>)
 ```
-
-## Three levels
-
-| Level | What | Where |
-| --- | --- | --- |
-| Base | image / container, base configuration | `oradba-docker` (M1/M2), today `trivadis/ora_db` and Oracle Free |
-| Lab | reusable environment on one or more bases | `labs/` in this repo |
-| Demo | 1-2 scripts (setup/run/reset) on a lab | at the consumer (talk repo), or `demos/` when reused |
-
-A lab exists once, here. Talks and trainings call it, they never copy it.
 
 ## How a lab works
 
-- `make up` runs `docker compose up -d`, waits until every container is healthy and its
-  startup hooks have run (marker `/tmp/oradba-labs.ready`), runs pending setup hooks, then
-  creates the guaranteed restore point `LAB_BASELINE` and runs `verify.sh`
-- `make reset` flashes every database of the lab back to `LAB_BASELINE` (in parallel) and
-  opens all PDBs - the lab is back at its starting point, including audit trail and users
-- Ports are bound to `127.0.0.1` only and never 1521 - each lab has its own ports in `lab.env`
+- **Contract:** labs follow the Oracle container pattern ([oracle/docker-images
+  SingleInstance](https://github.com/oracle/docker-images/tree/main/OracleDatabase/SingleInstance),
+  container-registry.oracle.com): `ORACLE_PWD`, data under `/opt/oracle/oradata`, hooks under
+  `/opt/oracle/scripts/setup` and `/opt/oracle/scripts/startup`, the image's healthcheck. The image
+  creates the database (19c: dbca, Free: on an empty data directory) and runs the hooks - the lab
+  only provides them. The pattern and the scripts come from oracle-free-labs (`labdb`).
+- **Storage:** `LAB_STORAGE=bind` (default) keeps the data under `LAB_DATA_BASE/<lab>/<db>` on the
+  host (`~/oradba-labs-data`); `LAB_STORAGE=volume` uses named volumes with `nocopy`, so an image
+  with a prebuilt database does not pre-fill the volume. The path does not contain the image
+  version: the same data can be started with a newer image.
+- **Baseline and reset:** the last startup hook creates the guaranteed restore point
+  `LAB_BASELINE` once. `make up` waits for healthy + baseline. `make reset` flashes every database
+  of the lab back to it in parallel; `make rebuild` starts from empty data.
+- Ports are bound to `127.0.0.1` only and never 1521 - each lab has its own ports in `lab.env`.
+- Standard PDB `LABPDB1` with the core configuration of `labdb` (audit, profiles, `db_domain`);
+  a lab with other content uses another PDB name (seclab: `DEMOPDB`).
 
 ## Requirements
 
-- Docker Desktop or Docker Engine with compose v2, about 6 GB memory for `seclab`
-- The images: `trivadis/ora_db:19.27.0.0` (private, built from `oehrlis/docker`, until M2) and
-  `container-registry.oracle.com/database/free` (Oracle license terms apply)
-- For `make lint`/`make check`: shellcheck, markdownlint, gitleaks
+- Docker Desktop or Docker Engine with compose v2; about 6 GB memory for `seclab`
+- Images: `trivadis/ora_db:19.27.0.0` (own image, until M2), `oracle-free-labs:latest` (Free +
+  OraDBA, built by oracle-free-labs) or `container-registry.oracle.com/database/free` - Oracle
+  license terms apply. From M2 the images come from `oradba-docker`.
+- For `make lint` / `make check`: shellcheck, markdownlint, gitleaks
+- Podman: planned (`COMPOSE=podman`), not tested yet
 
 ## Rules for this public repo
 
 - No binaries, no patches, no passwords (only `lab.env.example`), no customer or site data
 - Images stay private (Oracle license); labs only know image name + version + connection
-- No attack code: demos at the consumer bring their own scripts
+- No attack code: offensive demo SQL stays with its author at the consumer
 
 ## License
 
-Apache License 2.0 - see [LICENSE](LICENSE). `common/sql/create_scott.sql` and
+Apache License 2.0 - see [LICENSE](LICENSE). `common/scripts/create_scott.sql` and
 `create_tvd_hr.sql` are under the Universal Permissive License as noted in their headers.

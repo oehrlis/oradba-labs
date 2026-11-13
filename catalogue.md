@@ -5,9 +5,9 @@ One line per lab. A demo names its lab (`requires: <lab>`), it does not bring it
 <!-- markdownlint-disable MD013 MD060 -->
 | Lab | Purpose | Images / versions | Ports | Consumer |
 | --- | --- | --- | --- | --- |
-| `base19` | Plain 19c EE: CDB `CDB19` + `PDB1`, Unified Audit pure | `trivadis/ora_db:19.27.0.0` | 1561 | tests, base for 19c-only demos |
-| `base26` | Plain 26ai Free: CDB `FREE` + `FREEPDB1`, Unified Audit pure | `database/free:latest` (23.26.3) | 1571 | tests, base for 26ai-only demos |
-| `seclab` | Default security lab: 19c + 26ai side by side, `DEMOPDB` with SCOTT, TVD_HR, LAB_ADMIN, LAB_USER | both of the above | 1562, 1572 | talks-privesc (oracle-privesc module 4), DOAG 2026 security demos (M0b), trainings |
+| `base19` | 19c EE: CDB `CDB19` + `LABPDB1` (core config of `labdb`), Unified Audit pure | `trivadis/ora_db:19.27.0.0` | 1561 | tests, base for 19c-only demos |
+| `base26` | 26ai Free = oracle-free-labs `labdb`: CDB `FREE` + `LABPDB1` | `oracle-free-labs:latest` (23.26.3) | 1571 | deep-data demos, base for 26ai-only demos |
+| `seclab` | Default security lab: 19c + 26ai side by side, `LABPDB1` + `DEMOPDB` (SCOTT, TVD_HR, LAB_ADMIN, LAB_USER) | both of the above | 1562, 1572 | security talks (privilege escalation, hold my beer exercises), trainings |
 <!-- markdownlint-restore -->
 
 ## Planned (not in M0)

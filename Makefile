@@ -5,9 +5,9 @@
 # Author.....: Stefan Oehrli (oes) stefan.oehrli@oradba.ch
 # Editor.....: Stefan Oehrli
 # Date.......: 2026-11-13
-# Revision...: 0.1.0
+# Revision...: 0.2.0
 # Purpose....: oradba-labs - one lab on push of a button:
-#              make list | up | down | reset | status | connect | verify LAB=<name>
+#              make list | up | down | reset | rebuild | status | connect | verify LAB=<name>
 # Notes......: The lab logic lives in common/scripts/labctl.sh; this file only
 #              maps targets to it. Use 'make help' for all targets.
 # Reference..: https://github.com/oehrlis/oradba-labs
@@ -23,6 +23,8 @@ LABCTL := common/scripts/labctl.sh
 LAB ?=
 DB ?=
 PURGE ?= 0
+COMPOSE ?= docker
+export COMPOSE
 DRY_RUN ?=
 DRY := $(if $(filter 1 true TRUE yes,$(DRY_RUN)),--dry-run,)
 
@@ -36,7 +38,7 @@ SHELL_FILES = $(shell find common labs -name '*.sh' -type f | sort)
 help: ## Show this help
 	@echo "oradba-labs $(VERSION)"
 	@echo ""
-	@echo "Usage: make <target> LAB=<name> [DB=db19|db26] [PURGE=1] [DRY_RUN=1]"
+	@echo "Usage: make <target> LAB=<name> [DB=db19|db26] [PURGE=1] [DRY_RUN=1] [COMPOSE=docker]"
 	@echo ""
 	@grep -E '^[a-z-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[32m%-12s\033[0m %s\n", $$1, $$2}'
@@ -45,7 +47,7 @@ help: ## Show this help
 # Lab lifecycle
 # ==============================================================================
 
-.PHONY: list up down reset status connect verify
+.PHONY: list up down reset rebuild status connect verify
 list: ## List all labs
 	@$(LABCTL) list
 
@@ -57,6 +59,9 @@ down: ## Remove LAB containers (data volumes only with PURGE=1)
 
 reset: ## Flash LAB back to its baseline (restore point LAB_BASELINE)
 	@$(LABCTL) $(DRY) reset $(LAB)
+
+rebuild: ## Remove LAB containers and data, create the databases again
+	@$(LABCTL) $(DRY) rebuild $(LAB)
 
 status: ## Show LAB containers, health and restore points
 	@$(LABCTL) status $(LAB)
@@ -84,7 +89,8 @@ lint-markdown: ## markdownlint all Markdown files
 
 lint-compose: ## Validate every labs/*/compose.yml against its lab.env.example
 	@for d in labs/*/; do \
-		docker compose --env-file $$d/lab.env.example -f $$d/compose.yml config -q || exit 1; \
+		DB19_DATA=/tmp/x DB26_ORADATA=/tmp/x DB26_DBCONFIG=/tmp/x DB19_LOGS=/tmp/x DB26_LOGS=/tmp/x \
+		LAB_SHARED=/tmp/x docker compose --env-file $$d/lab.env.example -f $$d/compose.yml config -q || exit 1; \
 		echo "compose: $$d ok"; \
 	done
 

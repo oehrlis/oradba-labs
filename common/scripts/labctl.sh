@@ -6,22 +6,25 @@
 # Author.....: Stefan Oehrli (oes) stefan.oehrli@oradba.ch
 # Editor.....: Stefan Oehrli
 # Date.......: 2026-11-13
-# Version....: 0.1.0
-# Purpose....: Lab lifecycle for oradba-labs: list, up, down, reset, status,
-#              connect and verify a lab under labs/<name>.
-# Notes......: - Called by the Makefile (make <cmd> LAB=<name>), usable directly.
-#              - A lab is labs/<name>/compose.yml + lab.env. Every database
-#                service carries the labels oradba.labs.* (kind, sid, pdbs,
-#                port, datadir) - this script reads them, it knows no lab.
-#              - Reset = FLASHBACK DATABASE to the guaranteed restore point
-#                LAB_BASELINE, created by 'up' once the lab is ready.
-#              - Passwords never go to argv: they reach sqlplus via stdin.
+# Version....: 0.2.0
+# Purpose....: Lab lifecycle behind the Makefile: list, up, down, reset,
+#              rebuild, status, connect, verify for labs/<name>.
+# Notes......: - Thin wrapper around docker compose (podman later, COMPOSE=).
+#                The image does the database work: create or start, setup/
+#                and startup/ hooks (Oracle container pattern, E8).
+#              - Storage (E9): LAB_STORAGE=bind -> <LAB_DATA_BASE>/<lab>/<db>,
+#                volume -> named volumes with nocopy. Sets the DB*_DATA
+#                variables used in compose.yml.
+#              - reset = FLASHBACK DATABASE to LAB_BASELINE (created by the
+#                startup hook 90_lab_baseline.sh); rebuild = data gone, new.
+#              - Passwords never go to argv: sqlplus reads them from stdin.
 # Reference..: https://github.com/oehrlis/oradba-labs
 # License....: Apache License Version 2.0, January 2004 as shown
 #              at http://www.apache.org/licenses/
 # ------------------------------------------------------------------------------
 # CHANGE LOG:
 # 2026-11-13  oes  Initial release                                    0.1.0
+# 2026-11-13  oes  Mechanics per E8-E11: no own setup layer, storage  0.2.0
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
@@ -32,17 +35,13 @@ SCRIPT_NAME=$(basename "$0")
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 LABS_DIR="${REPO_ROOT}/labs"
-VERSION="0.1.0"
+VERSION="0.2.0"
 DRY_RUN=${DRY_RUN:-"FALSE"}
 PURGE=${PURGE:-"0"}
+COMPOSE=${COMPOSE:-"docker"}
 RESTORE_POINT="LAB_BASELINE"
-READY_TIMEOUT=${READY_TIMEOUT:-3600}   # first 19c start runs dbca, allow 60 min
-READY_MARKER="/tmp/oradba-labs.ready"
+READY_TIMEOUT=${READY_TIMEOUT:-3600} # first 19c start runs dbca
 
-# ------------------------------------------------------------------------------
-# Function: log_info, log_warn, log_error, die
-# Purpose.: Consistent logging to stdout/stderr
-# ------------------------------------------------------------------------------
 log_info() { echo "$(date '+%Y-%m-%d %H:%M:%S') INFO  $*"; }
 log_warn() { echo "$(date '+%Y-%m-%d %H:%M:%S') WARN  $*" >&2; }
 log_error() { echo "$(date '+%Y-%m-%d %H:%M:%S') ERROR $*" >&2; }
@@ -51,47 +50,34 @@ die() {
     exit 1
 }
 
-# ------------------------------------------------------------------------------
-# usage: show script usage
-# ------------------------------------------------------------------------------
 usage() {
     cat <<EOF
-Usage: ${SCRIPT_NAME} <command> [LAB] [OPTIONS]
+Usage: ${SCRIPT_NAME} <command> [LAB] [DB] [OPTIONS]
 
   Lab lifecycle for oradba-labs (${VERSION}).
 
 Commands:
-  list                 List all labs with their purpose
-  up <lab>             Start the lab, wait until ready, create baseline, verify
-  down <lab>           Remove the lab containers (data volumes stay)
+  list                 List all labs
+  up <lab>             Start the lab, wait until healthy + baseline, verify
+  down <lab>           Remove the containers (data stays; --purge removes it)
   reset <lab>          Flash all lab databases back to ${RESTORE_POINT}
-  status <lab>         Show containers, health and restore points
-  connect <lab> [db]   sqlplus / as sysdba into a lab database (default: first)
-  verify <lab>         Health and connection check, prints connect strings
+  rebuild <lab>        Remove containers and data, start again (new databases)
+  status <lab>         Containers, health, restore points, storage
+  connect <lab> [db]   sqlplus / as sysdba into a lab database (db19|db26)
+  verify <lab>         Checks and connect strings
 
 Options:
   -h, --help           Show this help and exit
   -d, --dry-run        Show what would be done, change nothing
-      --purge|--delete down: remove the data volumes as well (same as PURGE=1)
+      --purge|--delete down: remove the data as well (same as PURGE=1)
   -y, --yes            Accepted for consistency - labctl never prompts
 
-Examples:
-  ${SCRIPT_NAME} up seclab
-  ${SCRIPT_NAME} connect seclab db26
-  PURGE=1 ${SCRIPT_NAME} down seclab
+Environment:
+  COMPOSE=docker (podman: second priority, untested), PURGE=1, DRY_RUN=TRUE
 
 EOF
 }
 
-# ------------------------------------------------------------------------------
-# Function: run
-# Purpose.: Execute a state-changing command, or only print it in dry-run mode
-# Args....: $@  command and arguments
-# Returns.: exit code of the command (0 in dry-run)
-# Output..: command output
-# Depends.: -
-# Example.: run docker compose down
-# ------------------------------------------------------------------------------
 run() {
     if [[ "${DRY_RUN}" == "TRUE" ]]; then
         log_info "DRY-RUN: $*"
@@ -103,11 +89,7 @@ run() {
 # ------------------------------------------------------------------------------
 # Function: lab_dir
 # Purpose.: Resolve and validate the directory of a lab
-# Args....: $1  lab  lab name
-# Returns.: 0 lab exists, exits otherwise
 # Output..: absolute lab directory
-# Depends.: -
-# Example.: dir=$(lab_dir seclab)
 # ------------------------------------------------------------------------------
 lab_dir() {
     local lab="${1:-}"
@@ -116,119 +98,131 @@ lab_dir() {
     echo "${LABS_DIR}/${lab}"
 }
 
-# ------------------------------------------------------------------------------
-# Function: gen_password
-# Purpose.: Generate an Oracle-compatible lab password (upper, lower, digit)
-# Args....: -
-# Returns.: 0
-# Output..: password on stdout
-# Depends.: openssl
-# Example.: pwd=$(gen_password)
-# ------------------------------------------------------------------------------
 gen_password() {
     printf 'Lab%s9x' "$(openssl rand -hex 7)"
 }
 
 # ------------------------------------------------------------------------------
 # Function: ensure_env
-# Purpose.: Create lab.env from lab.env.example with generated passwords,
-#           if it does not exist yet. An existing lab.env is never touched.
-# Args....: $1  lab  lab name
-# Returns.: 0
-# Output..: what was created
-# Depends.: openssl, sed
-# Example.: ensure_env seclab
+# Purpose.: Create lab.env from lab.env.example (CHANGE_ME -> generated
+#           password). An existing lab.env is never changed - keys missing in
+#           it are appended from the example and named.
+# Depends.: openssl
 # ------------------------------------------------------------------------------
 ensure_env() {
-    local dir
+    local dir env example line key added=""
     dir=$(lab_dir "$1")
-    local env="${dir}/lab.env" example="${dir}/lab.env.example"
-    if [[ -f "${env}" ]]; then
-        grep -qE '^[A-Za-z0-9_]+=CHANGE_ME' "${env}" && die "${env} still contains CHANGE_ME - set the passwords or delete the file"
-        return 0
-    fi
+    env="${dir}/lab.env"
+    example="${dir}/lab.env.example"
     [[ -f "${example}" ]] || die "missing ${example}"
+    if [[ -f "${env}" ]] && grep -qE '^[A-Za-z0-9_]+=CHANGE_ME' "${env}"; then
+        die "${env} still contains CHANGE_ME - set the passwords or delete the file"
+    fi
     if [[ "${DRY_RUN}" == "TRUE" ]]; then
-        log_info "DRY-RUN: would create ${env} from lab.env.example with generated passwords"
+        log_info "DRY-RUN: would create or complete ${env}"
         return 0
     fi
-    local line out=""
+    if [[ ! -f "${env}" ]]; then
+        (umask 077 && : >"${env}")
+        log_info "creating ${env} with generated passwords (mode 600, git-ignored)"
+    fi
     while IFS= read -r line || [[ -n "${line}" ]]; do
-        if [[ "${line}" == *=CHANGE_ME* ]]; then
-            line="${line%%=*}=$(gen_password)"
-        fi
-        out+="${line}"$'\n'
+        [[ "${line}" =~ ^([A-Za-z0-9_]+)= ]] || continue
+        key="${BASH_REMATCH[1]}"
+        grep -qE "^${key}=" "${env}" && continue
+        [[ "${line}" == *=CHANGE_ME* ]] && line="${key}=$(gen_password)"
+        printf '%s\n' "${line}" >>"${env}"
+        added+=" ${key}"
     done <"${example}"
-    (umask 077 && printf '%s' "${out}" >"${env}")
-    log_info "created ${env} with generated passwords (mode 600, not tracked by git)"
+    if [[ -n "${added}" ]]; then
+        log_info "lab.env: added${added} (existing values unchanged)"
+    fi
 }
 
 # ------------------------------------------------------------------------------
-# Function: compose
-# Purpose.: docker compose for a lab with its project name and lab.env
-# Args....: $1  lab  lab name, rest: compose arguments
-# Returns.: exit code of docker compose
-# Output..: docker compose output
-# Depends.: docker compose v2
-# Example.: compose seclab ps
+# Function: env_value
+# Purpose.: Read one key from lab.env (no sourcing - values are not executed)
+# Output..: value, a leading '~' expanded to $HOME
 # ------------------------------------------------------------------------------
+env_value() {
+    local dir value
+    dir=$(lab_dir "$1")
+    value=$(grep -E "^$2=" "${dir}/lab.env" | tail -1 || true)
+    value="${value#*=}"
+    if [[ "${value}" == "~"* ]]; then
+        value="${HOME}${value#\~}"
+    fi
+    printf '%s' "${value}"
+}
+
+# ------------------------------------------------------------------------------
+# Function: storage_env
+# Purpose.: Export the storage variables compose.yml uses (E9) and create the
+#           host directories for bind mounts
+# ------------------------------------------------------------------------------
+storage_env() {
+    local lab="$1" storage base
+    storage=$(env_value "${lab}" LAB_STORAGE)
+    base=$(env_value "${lab}" LAB_DATA_BASE)
+    storage="${storage:-bind}"
+    base="${base:-${HOME}/oradba-labs-data}/${lab}"
+    export LAB_DATA_DIR="${base}"
+    export LAB_SHARED="${base}/shared" DB19_LOGS="${base}/db19/logs" DB26_LOGS="${base}/db26/logs"
+    case "${storage}" in
+        bind)
+            export DB19_DATA="${base}/db19/u01" DB26_ORADATA="${base}/db26/oradata"
+            export DB26_DBCONFIG="${base}/db26/dbconfig" LAB_VOLOPT=""
+            ;;
+        volume)
+            export DB19_DATA="db19data" DB26_ORADATA="db26oradata" DB26_DBCONFIG="db26dbconfig"
+            export LAB_VOLOPT=":nocopy"
+            ;;
+        *) die "LAB_STORAGE=${storage} in lab.env - use bind or volume" ;;
+    esac
+    export LAB_STORAGE="${storage}"
+    if [[ "${DRY_RUN}" != "TRUE" ]]; then
+        mkdir -p "${LAB_SHARED}/dpdump" "${DB19_LOGS}" "${DB26_LOGS}"
+        if [[ "${storage}" == "bind" ]]; then
+            mkdir -p "${DB19_DATA}" "${DB26_ORADATA}" "${DB26_DBCONFIG}"
+        fi
+    fi
+}
+
 compose() {
-    local lab="$1"
+    local lab="$1" dir
     shift
-    local dir
     dir=$(lab_dir "${lab}")
-    docker compose --project-name "oradba-labs-${lab}" --project-directory "${dir}" \
+    storage_env "${lab}"
+    ${COMPOSE} compose --project-name "oradba-labs-${lab}" --project-directory "${dir}" \
         --env-file "${dir}/lab.env" -f "${dir}/compose.yml" "$@"
 }
 
 # ------------------------------------------------------------------------------
 # Function: containers
-# Purpose.: List the database containers of a running lab (label oradba.labs.kind)
-# Args....: $1  lab  lab name
-# Returns.: 0
-# Output..: container names, one per line
-# Depends.: docker
-# Example.: for c in $(containers seclab); do ...; done
+# Purpose.: Containers of a lab (compose project label), one per line
 # ------------------------------------------------------------------------------
 containers() {
-    docker ps -a --filter "label=com.docker.compose.project=oradba-labs-$1" \
-        --filter "label=oradba.labs.kind" --format '{{.Names}}' | sort
+    ${COMPOSE} ps -a --filter "label=com.docker.compose.project=oradba-labs-$1" \
+        --format '{{.Names}}' | sort
 }
 
-# ------------------------------------------------------------------------------
-# Function: label
-# Purpose.: Read one oradba.labs.* label of a container
-# Args....: $1  container, $2  label suffix (kind, sid, pdbs, port, datadir)
-# Returns.: 0
-# Output..: label value
-# Depends.: docker
-# Example.: label seclab-db19 port
-# ------------------------------------------------------------------------------
-label() {
-    docker inspect --format "{{index .Config.Labels \"oradba.labs.$2\"}}" "$1"
-}
-
-# ------------------------------------------------------------------------------
-# Function: sql_sysdba
-# Purpose.: Run SQL from stdin as SYSDBA inside a lab container
-# Args....: $1  container
-# Returns.: exit code of sqlplus
-# Output..: sqlplus output
-# Depends.: docker
-# Example.: echo "select 1 from dual;" | sql_sysdba seclab-db19
-# ------------------------------------------------------------------------------
 sql_sysdba() {
-    docker exec -i "$1" bash -c 'export ORAENV_ASK=NO; "${ORACLE_HOME}/bin/sqlplus" -s -L / as sysdba'
+    # shellcheck disable=SC2016  # expands inside the container
+    ${COMPOSE} exec -i "$1" bash -c 'export ORAENV_ASK=NO; "${ORACLE_HOME}/bin/sqlplus" -s -L / as sysdba'
+}
+
+has_baseline() {
+    local n
+    # shellcheck disable=SC2016  # v$restore_point is SQL, not a shell variable
+    n=$(printf 'SET HEADING OFF FEEDBACK OFF\nSELECT COUNT(*) FROM v$restore_point WHERE name = '\''%s'\'';\n' \
+        "${RESTORE_POINT}" | sql_sysdba "$1" 2>/dev/null | tr -d '[:space:]' || true)
+    [[ "${n}" == "1" ]]
 }
 
 # ------------------------------------------------------------------------------
 # Function: wait_ready
-# Purpose.: Wait until every lab container is healthy and its startup hooks ran
-# Args....: $1  lab  lab name
-# Returns.: 0 all ready, 1 timeout or container stopped
-# Output..: progress lines
-# Depends.: docker
-# Example.: wait_ready seclab
+# Purpose.: Wait until every container is healthy (image healthcheck) and has
+#           its LAB_BASELINE (last startup hook - setup and startup are done)
 # ------------------------------------------------------------------------------
 wait_ready() {
     local lab="$1" c state health waited=0 pending
@@ -236,15 +230,17 @@ wait_ready() {
     while true; do
         pending=""
         for c in $(containers "${lab}"); do
-            state=$(docker inspect --format '{{.State.Status}}' "${c}")
-            [[ "${state}" == "running" ]] || {
+            state=$(${COMPOSE} inspect --format '{{.State.Status}}' "${c}")
+            if [[ "${state}" != "running" ]]; then
                 log_error "${c} is ${state} - last log lines:"
-                docker logs --tail 30 "${c}" >&2 || true
+                ${COMPOSE} logs --tail 30 "${c}" >&2 || true
                 return 1
-            }
-            health=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "${c}")
-            if [[ "${health}" != "healthy" ]] || ! docker exec "${c}" test -f "${READY_MARKER}"; then
-                pending+=" ${c}(${health:-none})"
+            fi
+            health=$(${COMPOSE} inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "${c}")
+            if [[ "${health}" != "healthy" ]]; then
+                pending+=" ${c}(${health:-no healthcheck})"
+            elif ! has_baseline "${c}"; then
+                pending+=" ${c}(no ${RESTORE_POINT} yet)"
             fi
         done
         [[ -z "${pending}" ]] && return 0
@@ -252,120 +248,17 @@ wait_ready() {
             log_error "timeout after ${waited}s, not ready:${pending}"
             return 1
         fi
-        ((waited % 60 == 0)) && log_info "waiting for${pending} (${waited}s, first start creates the databases)"
+        if ((waited % 60 == 0)); then
+            log_info "waiting for${pending} (${waited}s; first start creates the databases)"
+        fi
         sleep 10
         waited=$((waited + 10))
     done
 }
 
 # ------------------------------------------------------------------------------
-# Function: provision
-# Purpose.: Run the lab setup hooks (/opt/oradba-labs/setup) once, after the
-#           container is ready. Done here and not by the image init: the Free
-#           image skips setup hooks for its prebuilt database, ora_db runs them
-#           with the PDB still mounted and ignores failures. Marker in the data
-#           volume: survives down/up, disappears with PURGE=1.
-# Args....: $1  container
-# Returns.: 0 hooks ran or were not needed, 1 a hook failed
-# Output..: hook output
-# Depends.: docker
-# Example.: provision seclab-db26
-# ------------------------------------------------------------------------------
-provision() {
-    local c="$1" datadir marker
-    datadir=$(label "${c}" datadir)
-    marker="${datadir}/.oradba-labs.setup"
-    if docker exec "${c}" test -f "${marker}"; then
-        return 0
-    fi
-    if [[ "${DRY_RUN}" == "TRUE" ]]; then
-        log_info "DRY-RUN: would run the setup hooks in ${c}"
-        return 0
-    fi
-    log_info "${c}: running setup hooks (first start)"
-    docker exec "${c}" bash -c '
-        set -euo pipefail
-        export ORAENV_ASK=NO
-        for f in /opt/oradba-labs/setup/*; do
-            case "${f}" in
-                *.sh) echo "- running ${f}"; bash "${f}" ;;
-                *.sql) echo "- running ${f}"; "${ORACLE_HOME}/bin/sqlplus" -s -L / as sysdba @"${f}" </dev/null ;;
-                *) echo "- ignoring ${f}" ;;
-            esac
-        done' || {
-        log_error "${c}: a setup hook failed - fix it, then 'make down LAB=... PURGE=1' and 'make up' again"
-        return 1
-    }
-    docker exec "${c}" touch "${marker}"
-    # a baseline from before the setup would reset the lab to an empty state
-    sql_sysdba "${c}" <<EOF
-SET FEEDBACK OFF
-BEGIN
-  FOR r IN (SELECT name FROM v\$restore_point WHERE name = '${RESTORE_POINT}') LOOP
-    EXECUTE IMMEDIATE 'DROP RESTORE POINT ${RESTORE_POINT}';
-  END LOOP;
-END;
-/
-EOF
-    log_info "${c}: setup hooks done"
-}
-
-# ------------------------------------------------------------------------------
-# Function: baseline
-# Purpose.: Create the guaranteed restore point LAB_BASELINE if it is missing.
-#           Configures a recovery area under the data volume if none is set.
-# Args....: $1  container
-# Returns.: 0 restore point exists afterwards
-# Output..: sqlplus output
-# Depends.: docker, sqlplus in the container
-# Example.: baseline seclab-db19
-# ------------------------------------------------------------------------------
-baseline() {
-    local c="$1" datadir
-    datadir=$(label "${c}" datadir)
-    if [[ "${DRY_RUN}" == "TRUE" ]]; then
-        log_info "DRY-RUN: would create restore point ${RESTORE_POINT} in ${c}"
-        return 0
-    fi
-    docker exec "${c}" mkdir -p "${datadir}/fra"
-    sql_sysdba "${c}" <<EOF
-WHENEVER SQLERROR EXIT FAILURE
-SET SERVEROUTPUT ON FEEDBACK OFF HEADING OFF
-DECLARE
-  l_log  v\$database.log_mode%TYPE;
-  l_fra  v\$parameter.value%TYPE;
-  l_rp   NUMBER;
-BEGIN
-  SELECT log_mode INTO l_log FROM v\$database;
-  IF l_log <> 'ARCHIVELOG' THEN
-    RAISE_APPLICATION_ERROR(-20001, 'database is not in ARCHIVELOG mode - required for the lab baseline');
-  END IF;
-  SELECT value INTO l_fra FROM v\$parameter WHERE name = 'db_recovery_file_dest';
-  IF l_fra IS NULL THEN
-    EXECUTE IMMEDIATE 'ALTER SYSTEM SET db_recovery_file_dest_size = 20G SCOPE=BOTH';
-    EXECUTE IMMEDIATE 'ALTER SYSTEM SET db_recovery_file_dest = ''${datadir}/fra'' SCOPE=BOTH';
-    dbms_output.put_line('- recovery area set to ${datadir}/fra (20G)');
-  END IF;
-  SELECT COUNT(*) INTO l_rp FROM v\$restore_point WHERE name = '${RESTORE_POINT}';
-  IF l_rp = 0 THEN
-    EXECUTE IMMEDIATE 'CREATE RESTORE POINT ${RESTORE_POINT} GUARANTEE FLASHBACK DATABASE';
-    dbms_output.put_line('- restore point ${RESTORE_POINT} created');
-  ELSE
-    dbms_output.put_line('- restore point ${RESTORE_POINT} exists');
-  END IF;
-END;
-/
-EOF
-}
-
-# ------------------------------------------------------------------------------
 # Function: flashback
-# Purpose.: Flash a lab database back to LAB_BASELINE and open all PDBs
-# Args....: $1  container
-# Returns.: 0 success
-# Output..: sqlplus output
-# Depends.: docker, sqlplus in the container
-# Example.: flashback seclab-db26
+# Purpose.: Flash one database back to LAB_BASELINE and open all PDBs
 # ------------------------------------------------------------------------------
 flashback() {
     local c="$1"
@@ -373,13 +266,8 @@ flashback() {
         log_info "DRY-RUN: would flash ${c} back to ${RESTORE_POINT}"
         return 0
     fi
-    local rp
-    # shellcheck disable=SC2016  # v$restore_point is SQL, not a shell variable
-    rp=$(printf 'SET HEADING OFF FEEDBACK OFF\nSELECT COUNT(*) FROM v$restore_point WHERE name = '\''%s'\'';\n' \
-        "${RESTORE_POINT}" | sql_sysdba "${c}" | tr -d '[:space:]')
-    [[ "${rp}" == "1" ]] || die "${c}: no restore point ${RESTORE_POINT} - run 'make up LAB=...' first"
+    has_baseline "${c}" || die "${c}: no restore point ${RESTORE_POINT} - 'make rebuild LAB=...' creates a new lab"
     log_info "${c}: flashback database to ${RESTORE_POINT}"
-    docker exec "${c}" rm -f "${READY_MARKER}"
     sql_sysdba "${c}" <<EOF
 WHENEVER SQLERROR EXIT FAILURE
 SHUTDOWN IMMEDIATE
@@ -388,7 +276,21 @@ FLASHBACK DATABASE TO RESTORE POINT ${RESTORE_POINT};
 ALTER DATABASE OPEN RESETLOGS;
 ALTER PLUGGABLE DATABASE ALL OPEN;
 EOF
-    docker exec "${c}" touch "${READY_MARKER}"
+}
+
+# ------------------------------------------------------------------------------
+# Function: purge_data
+# Purpose.: Remove the data of a lab - named volumes or the bind directory.
+#           Only ever below <LAB_DATA_BASE>/<lab>.
+# ------------------------------------------------------------------------------
+purge_data() {
+    local lab="$1"
+    storage_env "${lab}"
+    log_warn "removing containers AND data of ${lab} (${LAB_STORAGE}: ${LAB_DATA_DIR})"
+    run compose "${lab}" down --volumes --remove-orphans
+    if [[ "${LAB_DATA_DIR}" == */"${lab}" && -d "${LAB_DATA_DIR}" ]]; then
+        run rm -rf "${LAB_DATA_DIR}"
+    fi
 }
 
 # ------------------------------------------------------------------------------
@@ -406,18 +308,13 @@ cmd_list() {
 }
 
 cmd_up() {
-    local lab="$1" c
+    local lab="$1"
     ensure_env "${lab}"
+    storage_env "${lab}"
     log_info "starting lab ${lab}"
     run compose "${lab}" up -d
-    wait_ready "${lab}" || die "lab ${lab} did not become ready - see 'make status LAB=${lab}' and docker logs"
-    # all setups first: a baseline is only taken once every database is set up
-    for c in $(containers "${lab}"); do
-        provision "${c}" || die "setup of ${c} failed"
-    done
-    for c in $(containers "${lab}"); do
-        baseline "${c}"
-    done
+    log_info "storage: ${LAB_STORAGE} (${LAB_DATA_DIR})"
+    wait_ready "${lab}" || die "lab ${lab} did not become ready - 'make status LAB=${lab}', logs under ${LAB_DATA_DIR}"
     cmd_verify "${lab}"
 }
 
@@ -425,24 +322,30 @@ cmd_down() {
     local lab="$1" dir
     dir=$(lab_dir "${lab}")
     [[ -f "${dir}/lab.env" ]] || die "no lab.env for ${lab} - nothing to take down"
+    storage_env "${lab}"
     if [[ "${PURGE}" == "1" ]]; then
-        log_warn "PURGE=1: removing containers AND data volumes of ${lab}"
-        run compose "${lab}" down --volumes --remove-orphans
+        purge_data "${lab}"
     else
         run compose "${lab}" down --remove-orphans
-        log_info "data volumes of ${lab} kept - 'make down LAB=${lab} PURGE=1' removes them"
+        log_info "data of ${lab} kept (${LAB_DATA_DIR}) - 'make down LAB=${lab} PURGE=1' removes it"
     fi
 }
 
+cmd_rebuild() {
+    local lab="$1"
+    ensure_env "${lab}"
+    purge_data "${lab}"
+    cmd_up "${lab}"
+}
+
 cmd_reset() {
-    local lab="$1" c start
-    lab_dir "${lab}" >/dev/null
+    local lab="$1" c start list pids=() pid failed=0
+    ensure_env "${lab}"
+    storage_env "${lab}"
     start=$(date +%s)
-    local list
     list=$(containers "${lab}")
     [[ -n "${list}" ]] || die "lab ${lab} is not running - 'make up LAB=${lab}'"
     # parallel, but wait per PID: a bare 'wait' returns 0 even if a job failed
-    local pids=() pid failed=0
     for c in ${list}; do
         flashback "${c}" &
         pids+=("$!")
@@ -458,9 +361,11 @@ cmd_reset() {
 
 cmd_status() {
     local lab="$1" c
+    ensure_env "${lab}"
     compose "${lab}" ps
+    log_info "storage: ${LAB_STORAGE} (${LAB_DATA_DIR})"
     for c in $(containers "${lab}"); do
-        [[ "$(docker inspect --format '{{.State.Status}}' "${c}")" == "running" ]] || continue
+        [[ "$(${COMPOSE} inspect --format '{{.State.Status}}' "${c}")" == "running" ]] || continue
         echo "--- ${c}: restore points"
         # shellcheck disable=SC2016  # v$restore_point is SQL, not a shell variable
         printf 'SET LINESIZE 120 FEEDBACK OFF\nCOLUMN name FORMAT A20\nSELECT name, guarantee_flashback_database gfd, time FROM v$restore_point;\n' |
@@ -475,26 +380,23 @@ cmd_connect() {
     else
         c=$(containers "${lab}" | head -1)
     fi
-    if [[ -z "${c}" ]] || ! docker inspect "${c}" >/dev/null 2>&1; then
+    if [[ -z "${c}" ]] || ! ${COMPOSE} inspect "${c}" >/dev/null 2>&1; then
         die "no container ${c:-for ${lab}} - running: $(containers "${lab}" | tr '\n' ' ')"
     fi
-    exec docker exec -it "${c}" bash -c 'export ORAENV_ASK=NO; "${ORACLE_HOME}/bin/sqlplus" / as sysdba'
+    # shellcheck disable=SC2016  # expands inside the container
+    exec ${COMPOSE} exec -it "${c}" bash -c 'export ORAENV_ASK=NO; "${ORACLE_HOME}/bin/sqlplus" / as sysdba'
 }
 
 cmd_verify() {
-    local lab="$1"
-    local dir
+    local lab="$1" dir
     dir=$(lab_dir "${lab}")
     if [[ "${DRY_RUN}" == "TRUE" ]]; then
         log_info "DRY-RUN: would run ${dir}/verify.sh"
         return 0
     fi
-    "${dir}/verify.sh"
+    COMPOSE="${COMPOSE}" "${dir}/verify.sh"
 }
 
-# ------------------------------------------------------------------------------
-# main
-# ------------------------------------------------------------------------------
 main() {
     local cmd="" args=()
     while [[ $# -gt 0 ]]; do
@@ -521,7 +423,7 @@ main() {
     done
     case "${cmd}" in
         list) cmd_list ;;
-        up | down | reset | status | verify) "cmd_${cmd}" "${args[@]:-}" ;;
+        up | down | reset | rebuild | status | verify) "cmd_${cmd}" "${args[@]:-}" ;;
         connect) cmd_connect "${args[@]:-}" ;;
         "")
             usage

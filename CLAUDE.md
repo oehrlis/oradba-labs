@@ -25,9 +25,11 @@ decision E8+ in `lab-architecture.md`.
 - No binaries, no passwords (only `.env.example` with `CHANGE_ME`), no customer/site data
   (no private domains, hostnames, OCIDs)
 - Ports bound to `127.0.0.1`, never 1521 (other labs run there) - one port range per lab
-- Shared SQL only in `common/sql/`, shared scripts only in `common/scripts/`
-- Init hooks are one line calling `bash common/scripts/...`; `setup/` runs via `labctl.sh`
-  (never rely on the image to run setup hooks: Free skips them, ora_db ignores failures)
+- Mechanics = oracle-free-labs (decisions E8-E14 in `docs/architecture.md`): Oracle container
+  contract, data via bind mount or `nocopy` volume, configuration only through the image's
+  `setup/` + `startup/` hooks - no own init layer. Any mechanism not fixed there: ask first
+- Shared SQL and scripts only in `common/scripts/` (same path as oracle-free-labs:
+  `/opt/oracle/common/scripts`)
 - Every `AUDIT` paired with `NOAUDIT`
 - `make check` (shellcheck, markdownlint, compose config, gitleaks) before every commit/tag
 - Do not change `docker`, `oracle-free-labs`, `oracle-database-docker*` from here (read only)
@@ -35,7 +37,7 @@ decision E8+ in `lab-architecture.md`.
 ## Commands
 
 ```bash
-make list | up | down | reset | status | connect | verify LAB=<name> [DB=db19|db26] [PURGE=1]
+make list | up | down | reset | rebuild | status | connect | verify LAB=<name> [DB=db19|db26] [PURGE=1]
 make lint      # shellcheck + markdownlint + compose config
 make check     # lint + gitleaks (tree + history)
 make tag       # check, tag v$(cat VERSION), push branch + tag

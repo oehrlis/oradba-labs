@@ -1,22 +1,22 @@
-# base26 - Oracle AI Database 26ai Free, CDB FREE + FREEPDB1
+# base26 - Oracle AI Database 26ai Free, CDB FREE + LABPDB1 (= labdb)
 
-Plain 26ai Free base lab: CDB `FREE` with `FREEPDB1`, Unified Auditing pure (default in 26ai),
-ARCHIVELOG (`ENABLE_ARCHIVELOG=true`), restore point `LAB_BASELINE` for `make reset`.
+The oracle-free-labs `labdb`, moved here: Free 23.26.3 with OraDBA, `FREEPDB1` dropped, standard
+PDB `LABPDB1` with audit configuration and policies, directory `COMMON_DATA`, network wallet.
 
 | Item | Value |
 | --- | --- |
-| Image | `container-registry.oracle.com/database/free:latest` (23.26.3), local alternative `oracle-free-labs:latest` - variable in `lab.env` |
+| Image | `oracle-free-labs:latest` (Free + OraDBA, `make build` in oracle-free-labs); plain `container-registry.oracle.com/database/free` works as well |
 | Port | `127.0.0.1:1571` -> 1521 |
-| Services | `free`, `freepdb1` (no `db_domain`) |
-| First start | about 3-5 min |
+| Services | `free.oradba.ch`, `labpdb1.oradba.ch` |
+| First start | database creation on empty data, a few minutes |
 
 ```bash
 make up LAB=base26
 make connect LAB=base26
 make reset LAB=base26
-make down LAB=base26          # PURGE=1 also removes the data volume
+make down LAB=base26          # PURGE=1 also removes the data
 ```
 
-Init hooks: `setup/db26/` runs once, by `labctl.sh` after the first start (the Free image starts
-a prebuilt database and would skip it; marker `.oradba-labs.setup` in the data volume).
-`startup/db26/` runs at every start (image mechanism `/opt/oracle/scripts/startup`).
+`setup/db26/` and `startup/db26/` are the `labdb` hooks 1:1; the image runs them
+(`/opt/oracle/scripts/setup|startup`). Demos written for `labdb` only change container
+(`base26-db26`) and port (1571).
