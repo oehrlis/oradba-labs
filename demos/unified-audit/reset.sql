@@ -44,6 +44,8 @@ END;
 /
 
 ALTER SESSION SET CONTAINER = DEMOPDB;
+-- DBMS_OUTPUT state is per container: re-enable after every switch
+SET SERVEROUTPUT ON SIZE UNLIMITED
 
 PROMPT - NOAUDIT + DROP AUDIT POLICY for the policies of solution.sql
 DECLARE
@@ -104,7 +106,9 @@ END;
 /
 
 PROMPT - Other custom policies (not HMB_*, not Oracle-supplied): report only
--- LAB-CHECK: AUDIT_UNIFIED_POLICIES.ORACLE_SUPPLIED exists on 19.27 and 23.26.3
+-- verified 2026-11-13: ORACLE_SUPPLIED and COMMON exist on 19.27 and 23.26.3.
+-- On 19.27 each query on AUDIT_UNIFIED_POLICIES takes about 5 s (reset.sql
+-- about 17 s in total), on 23.26.3 well under a second.
 BEGIN
   FOR r IN (SELECT DISTINCT policy_name FROM audit_unified_policies
              WHERE oracle_supplied = 'NO'
@@ -148,6 +152,7 @@ END;
 /
 
 ALTER SESSION SET CONTAINER = CDB$ROOT;
+SET SERVEROUTPUT ON SIZE UNLIMITED
 
 PROMPT - CDB$ROOT: custom policies (a live solution may have used CONTAINER=ALL) - report only
 BEGIN

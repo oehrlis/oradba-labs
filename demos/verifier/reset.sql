@@ -35,6 +35,8 @@ END;
 /
 
 ALTER SESSION SET CONTAINER = DEMOPDB;
+-- DBMS_OUTPUT state is per container: re-enable after every switch
+SET SERVEROUTPUT ON SIZE UNLIMITED
 
 PROMPT - Drop HMB_* demo accounts
 DECLARE
@@ -58,6 +60,7 @@ END;
 /
 
 ALTER SESSION SET CONTAINER = CDB$ROOT;
+SET SERVEROUTPUT ON SIZE UNLIMITED
 
 PROMPT - Restore the server sqlnet.ora (old -> new value is printed)
 HOST bash ./sqlnet_alv.sh restore

@@ -19,9 +19,9 @@
 --              - The decoy: AUDIT SELECT ANY TABLE BY hmb_dba is traditional
 --                syntax. In Unified Auditing pure mode it writes no record.
 --                It is paired with NOAUDIT in reset.sql.
---                LAB-CHECK: 19.27 accepts the statement silently; 26ai
---                (traditional auditing desupported) raises an error - both are
---                reported, neither stops the setup.
+--                verified 2026-11-13: 19.27 accepts the statement silently (it
+--                shows up in DBA_STMT/PRIV_AUDIT_OPTS); 23.26.3 rejects it with
+--                ORA-46401 - both are reported, neither stops the setup.
 --              - Stops if an HMB_* audit policy still exists: run reset.sql.
 --  License...: Apache License Version 2.0, January 2004 as shown
 --              at http://www.apache.org/licenses/
@@ -52,6 +52,8 @@ END;
 /
 
 ALTER SESSION SET CONTAINER = DEMOPDB;
+-- DBMS_OUTPUT state is per container: re-enable after every switch
+SET SERVEROUTPUT ON SIZE UNLIMITED
 
 PROMPT - Leftovers from an earlier run?
 DECLARE

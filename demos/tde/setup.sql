@@ -33,7 +33,8 @@ SET LINESIZE 160 PAGESIZE 100
 
 -- WALLET_ROOT location, as define_wallet_root_base.sql derives it:
 -- <diagnostic_dest>/dbconfig/<instance_name>/wallet (Free: /opt/oracle/dbconfig/FREE/wallet)
--- LAB-CHECK: /opt/oracle/dbconfig is a persistent mount in seclab-db26
+-- verified 2026-11-13: /opt/oracle/dbconfig is a persistent bind mount in
+-- seclab-db26 (empty in the baseline)
 COLUMN wallet_root NEW_VALUE wallet_root NOPRINT
 SELECT RTRIM(value, '/') || '/dbconfig/' || sys_context('userenv', 'instance_name') || '/wallet' AS wallet_root
   FROM v$parameter WHERE name = 'diagnostic_dest';
@@ -65,6 +66,8 @@ PROMPT - Wallet directory must not exist yet
 HOST if [ -e "&wallet_root" ]; then echo "STOP: &wallet_root exists - run reset.sql, then setup.sql again"; else echo "- OK: &wallet_root does not exist"; fi
 
 ALTER SESSION SET CONTAINER = DEMOPDB;
+-- DBMS_OUTPUT state is per container: re-enable after every switch
+SET SERVEROUTPUT ON SIZE UNLIMITED
 
 PROMPT - Leftover HMB_PLAIN_TS?
 DECLARE
@@ -102,6 +105,7 @@ SELECT LEVEL, 'HMB-TDE-CANARY', '4111-1111-' || TO_CHAR(MOD(LEVEL, 10000), 'FM00
 COMMIT;
 
 ALTER SESSION SET CONTAINER = CDB$ROOT;
+SET SERVEROUTPUT ON SIZE UNLIMITED
 ALTER SYSTEM CHECKPOINT;
 
 PROMPT - Clear text in the datafile (lines with the marker, > 0 = readable on disk)

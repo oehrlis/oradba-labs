@@ -15,11 +15,13 @@
 --                container. Sections 1-2 are read-only and run on db19 and db26
 --                (on db26 as the "what does 26ai show" contrast).
 --              - Section 3 logs in as the HMB_* accounts through the listener
---                (EZConnect localhost:1521/DEMOPDB) - that is where
+--                (EZConnect localhost:1521/demopdb.<db_domain>) - that is where
 --                ALLOWED_LOGON_VERSION_SERVER is enforced. Errors are the result
 --                here (ORA-01017 / ORA-28040), so no WHENEVER SQLERROR EXIT.
---                LAB-CHECK: service name DEMOPDB resolves without db_domain on
---                seclab-db19, and which error a 10G-only account gets under 12a.
+--                verified 2026-11-13 on 19.27: the listener only knows
+--                demopdb.oradba.ch (db_domain), plain DEMOPDB gives ORA-12514 -
+--                the service is derived from db_domain below. A 10G-only account
+--                under 12a gets ORA-01017 (not ORA-28040).
 --              - Each failed login counts against FAILED_LOGIN_ATTEMPTS
 --                (DEFAULT profile: 10); setup.sql recreates the accounts.
 --              - &1 setup password (default HmbDemo_Lab_Only_19),
@@ -46,6 +48,11 @@ COLUMN account_status    FORMAT A16
 COLUMN accounts          FORMAT 9999
 COLUMN has_10g_hash      FORMAT A12
 COLUMN login             FORMAT A40
+COLUMN hmb_svc           NEW_VALUE hmb_svc NOPRINT
+
+-- listener service of DEMOPDB: the service name carries db_domain (oradba.ch)
+SELECT 'demopdb' || NVL2(value, '.' || value, '') AS hmb_svc
+  FROM v$parameter WHERE name = 'db_domain';
 
 PROMPT == 1. Server setting and release =======================================
 SELECT banner_full FROM v$version;
@@ -60,6 +67,8 @@ SELECT con_id, TRIM(password_versions) AS password_versions, COUNT(*) AS account
  ORDER BY con_id, password_versions;
 
 ALTER SESSION SET CONTAINER = DEMOPDB;
+-- DBMS_OUTPUT state is per container: re-enable after every switch
+SET SERVEROUTPUT ON SIZE UNLIMITED
 
 PROMPT == 2b. Demo accounts in DEMOPDB ========================================
 SELECT u.username, u.password_versions, u.account_status,
@@ -75,22 +84,22 @@ PROMPT                             LEGACY fails with the old, OK with the new on
 WHENEVER SQLERROR CONTINUE
 
 PROMPT - HMB_MODERN, setup password
-CONNECT hmb_modern/"&&hmb_pwd"@//localhost:1521/DEMOPDB
+CONNECT hmb_modern/"&&hmb_pwd"@//localhost:1521/&&hmb_svc
 SELECT user || ' - LOGIN OK' AS login FROM dual;
 
 PROMPT - HMB_APP_OLD, setup password
-CONNECT hmb_app_old/"&&hmb_pwd"@//localhost:1521/DEMOPDB
+CONNECT hmb_app_old/"&&hmb_pwd"@//localhost:1521/&&hmb_svc
 SELECT user || ' - LOGIN OK' AS login FROM dual;
 
 PROMPT - HMB_LEGACY, setup password
-CONNECT hmb_legacy/"&&hmb_pwd"@//localhost:1521/DEMOPDB
+CONNECT hmb_legacy/"&&hmb_pwd"@//localhost:1521/&&hmb_svc
 SELECT user || ' - LOGIN OK' AS login FROM dual;
 
 PROMPT - HMB_LEGACY, new password from solution.sql
-CONNECT hmb_legacy/"&&hmb_new_pwd"@//localhost:1521/DEMOPDB
+CONNECT hmb_legacy/"&&hmb_new_pwd"@//localhost:1521/&&hmb_svc
 SELECT user || ' - LOGIN OK' AS login FROM dual;
 
 PROMPT - back to SYSDBA
 CONNECT / AS SYSDBA
-UNDEFINE hmb_pwd hmb_new_pwd
+UNDEFINE hmb_pwd hmb_new_pwd hmb_svc
 -- EOF -------------------------------------------------------------------------

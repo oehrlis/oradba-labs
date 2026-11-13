@@ -20,7 +20,7 @@
 --                is active - so it comes after the restart, SCOPE=BOTH.
 --                The restart closes every session of this CDB (round 3 only).
 --              - Not sqlnet.ora ENCRYPTION_WALLET_LOCATION: deprecated in 19c,
---                LAB-CHECK desupported in 23ai/26ai.
+--                desupported in 23ai/26ai (not tested live in this lab).
 --              - Keystore password: ACCEPT ... HIDE, never in the script. Lab
 --                only: LOCAL AUTO_LOGIN keystore. Production: password keystore
 --                with external store or OKV/HSM, never auto-login alone.
@@ -59,10 +59,12 @@ HOST mkdir -p "&wallet_root/tde"
 ALTER SYSTEM SET wallet_root = '&wallet_root' SCOPE = SPFILE;
 
 PROMPT == Step 2: restart - WALLET_ROOT is static ==============================
--- LAB-CHECK: SHUTDOWN/STARTUP inside seclab-db26 keeps the container running
--- and takes about 60-90 s
+-- verified 2026-11-13 on 23.26.3: SHUTDOWN/STARTUP inside seclab-db26 keeps
+-- the container running and takes about 5 s (whole script 8-11 s)
 SHUTDOWN IMMEDIATE
 STARTUP
+-- the restart ends the DBMS_OUTPUT state of this session as well
+SET SERVEROUTPUT ON SIZE UNLIMITED
 BEGIN
   FOR r IN (SELECT name FROM v$pdbs WHERE open_mode = 'MOUNTED' AND name <> 'PDB$SEED') LOOP
     EXECUTE IMMEDIATE 'ALTER PLUGGABLE DATABASE "' || r.name || '" OPEN';
@@ -80,11 +82,40 @@ ADMINISTER KEY MANAGEMENT CREATE KEYSTORE IDENTIFIED BY "&&keystore_pwd";
 ADMINISTER KEY MANAGEMENT SET KEYSTORE OPEN IDENTIFIED BY "&&keystore_pwd" CONTAINER = ALL;
 
 PROMPT == Step 5: master encryption keys for CDB$ROOT and all PDBs, with backup
+-- Lab plumbing, not part of the answer: a PDB that already has an activated
+-- master key although the keystore was just created means an earlier rehearsal
+-- (reset.sql deletes the wallet, the key references stay in the database).
+-- verified 2026-11-13 on 23.26.3: SET KEY then fails with ORA-46665 (missing
+-- key ID in the alert log). _db_discard_lost_masterkey (memory, lab only) lets
+-- SET KEY discard the lost key - nothing is encrypted with it any more, reset.sql
+-- dropped the tablespace. Decided without the password, so no PL/SQL block ever
+-- carries it (V$SQL).
+DEFINE hmb_discard = 'NO'
+COLUMN discard NEW_VALUE hmb_discard NOPRINT
+SELECT CASE WHEN COUNT(*) > 0 THEN 'YES' ELSE 'NO' END AS discard
+  FROM v$database_key_info WHERE con_id > 2 AND masterkey_activated = 'YES';
+BEGIN
+  IF '&hmb_discard' = 'YES' THEN
+    EXECUTE IMMEDIATE 'ALTER SYSTEM SET "_db_discard_lost_masterkey" = TRUE SCOPE = MEMORY';
+    dbms_output.put_line('LAB: PDB master keys of an earlier rehearsal are lost (wallet removed) - '
+      || 'discarding them for this SET KEY (_db_discard_lost_masterkey, memory)');
+  END IF;
+END;
+/
 ADMINISTER KEY MANAGEMENT SET KEY USING TAG 'hmb_initial'
   IDENTIFIED BY "&&keystore_pwd" WITH BACKUP USING 'hmb_initial' CONTAINER = ALL;
+BEGIN
+  IF '&hmb_discard' = 'YES' THEN
+    EXECUTE IMMEDIATE 'ALTER SYSTEM SET "_db_discard_lost_masterkey" = FALSE SCOPE = MEMORY';
+    dbms_output.put_line('LAB: _db_discard_lost_masterkey = FALSE again');
+  END IF;
+END;
+/
+UNDEFINE hmb_discard
 
 PROMPT == Step 6: local auto-login keystore (lab only) ========================
--- LAB-CHECK: FROM KEYSTORE without a path resolves to WALLET_ROOT/tde on 23.26.3
+-- verified 2026-11-13 on 23.26.3: FROM KEYSTORE without a path writes
+-- cwallet.sso next to ewallet.p12 in WALLET_ROOT/tde
 ADMINISTER KEY MANAGEMENT CREATE LOCAL AUTO_LOGIN KEYSTORE FROM KEYSTORE
   IDENTIFIED BY "&&keystore_pwd";
 UNDEFINE keystore_pwd
@@ -93,14 +124,31 @@ SELECT con_id, wrl_parameter, status, wallet_type FROM v$encryption_wallet ORDER
 
 PROMPT == Step 7: encrypt HMB_PLAIN_TS online (new file, old one removed) =====
 ALTER SESSION SET CONTAINER = DEMOPDB;
--- LAB-CHECK: online conversion with FILE_NAME_CONVERT on 23.26.3 Free
-ALTER TABLESPACE hmb_plain_ts ENCRYPTION ONLINE USING 'AES256' ENCRYPT
-  FILE_NAME_CONVERT = ('hmb_plain_ts01.dbf', 'hmb_plain_ts01_enc.dbf');
+-- DBMS_OUTPUT state is per container: re-enable after every switch
+SET SERVEROUTPUT ON SIZE UNLIMITED
+-- verified 2026-11-13 on 23.26.3 Free: DEMOPDB uses OMF (db_create_file_dest
+-- set) and FILE_NAME_CONVERT is rejected with ORA-28437. With OMF the encrypted
+-- copy gets a new OMF name; FILE_NAME_CONVERT only without OMF.
+--   OMF:     ALTER TABLESPACE hmb_plain_ts ENCRYPTION ONLINE USING 'AES256' ENCRYPT;
+--   non-OMF: ... ENCRYPT FILE_NAME_CONVERT = ('hmb_plain_ts01.dbf', 'hmb_plain_ts01_enc.dbf');
+DECLARE
+  l_omf v$parameter.value%TYPE;
+  l_sql VARCHAR2(400) := 'ALTER TABLESPACE hmb_plain_ts ENCRYPTION ONLINE USING ''AES256'' ENCRYPT';
+BEGIN
+  SELECT value INTO l_omf FROM v$parameter WHERE name = 'db_create_file_dest';
+  IF l_omf IS NULL THEN
+    l_sql := l_sql || ' FILE_NAME_CONVERT = (''hmb_plain_ts01.dbf'', ''hmb_plain_ts01_enc.dbf'')';
+  END IF;
+  EXECUTE IMMEDIATE l_sql;
+  dbms_output.put_line('- ' || l_sql);
+END;
+/
 
 COLUMN tablespace_name FORMAT A16
 COLUMN encrypted       FORMAT A9
 SELECT tablespace_name, encrypted FROM dba_tablespaces WHERE tablespace_name = 'HMB_PLAIN_TS';
 ALTER SESSION SET CONTAINER = CDB$ROOT;
+SET SERVEROUTPUT ON SIZE UNLIMITED
 
 PROMPT == Done - run check.sql: datafile scan must find 0 markers ==============
 -- EOF -------------------------------------------------------------------------

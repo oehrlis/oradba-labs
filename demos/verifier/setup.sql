@@ -57,6 +57,8 @@ HOST bash ./sqlnet_alv.sh backup
 HOST bash ./sqlnet_alv.sh show
 
 ALTER SESSION SET CONTAINER = DEMOPDB;
+-- DBMS_OUTPUT state is per container: re-enable after every switch
+SET SERVEROUTPUT ON SIZE UNLIMITED
 
 PROMPT - Drop HMB_* demo accounts from an earlier run
 BEGIN
@@ -68,7 +70,14 @@ BEGIN
 END;
 /
 
-PROMPT - HMB_MODERN: created with the current setting (19c default 12 -> 11G 12C)
+PROMPT - HMB_MODERN: created under 12 (release default -> 11G 12C)
+-- A rerun without reset.sql finds 11 in sqlnet.ora; set 12 explicitly and
+-- reconnect so HMB_MODERN never gets a 10G verifier (reset.sql restores the
+-- saved original file either way).
+HOST bash ./sqlnet_alv.sh set 12
+CONNECT / AS SYSDBA
+ALTER SESSION SET CONTAINER = DEMOPDB;
+SET SERVEROUTPUT ON SIZE UNLIMITED
 CREATE USER hmb_modern IDENTIFIED BY "&&hmb_pwd" DEFAULT TABLESPACE users;
 GRANT CREATE SESSION TO hmb_modern;
 
@@ -78,9 +87,10 @@ HOST bash ./sqlnet_alv.sh set 11
 PROMPT - Reconnect: only a new server process reads the changed sqlnet.ora
 CONNECT / AS SYSDBA
 ALTER SESSION SET CONTAINER = DEMOPDB;
+SET SERVEROUTPUT ON SIZE UNLIMITED
 
--- LAB-CHECK: on 19.27 a bequeath server process started with
--- ALLOWED_LOGON_VERSION_SERVER=11 generates 10G 11G 12C on CREATE/ALTER USER.
+-- verified 2026-11-13 on 19.27: a bequeath server process started with
+-- ALLOWED_LOGON_VERSION_SERVER=11 generates 10G 11G 12C on CREATE USER.
 PROMPT - HMB_APP_OLD and HMB_LEGACY: created under 11 (expected 10G 11G 12C)
 CREATE USER hmb_app_old IDENTIFIED BY "&&hmb_pwd" DEFAULT TABLESPACE users;
 CREATE USER hmb_legacy  IDENTIFIED BY "&&hmb_pwd" DEFAULT TABLESPACE users;
@@ -89,8 +99,8 @@ GRANT CREATE SESSION TO hmb_app_old, hmb_legacy;
 PROMPT - HMB_LEGACY: keep only the 10G verifier (account carried over since 10g)
 -- The 10G hash is in SYS.USER$.PASSWORD, the 11G/12C verifiers in SPARE4.
 -- IDENTIFIED BY VALUES with only the 16-hex 10G hash leaves a 10G-only account.
--- LAB-CHECK: 19.27 accepts IDENTIFIED BY VALUES '<16 hex>' and DBA_USERS then
--- shows PASSWORD_VERSIONS = '10G' for HMB_LEGACY.
+-- verified 2026-11-13 on 19.27: IDENTIFIED BY VALUES '<16 hex>' is accepted,
+-- DBA_USERS then shows PASSWORD_VERSIONS = '10G' for HMB_LEGACY.
 DECLARE
   l_hash sys.user$.password%TYPE;
 BEGIN

@@ -21,7 +21,8 @@
 --                (both hold DBA) - intended, it is a privileged-user policy.
 --              - A policy change applies to sessions started afterwards:
 --                check.sql logs in fresh as HMB_DBA.
---                LAB-CHECK: same behaviour on 19.27 and 23.26.3.
+--                verified 2026-11-13 on 19.27 and 23.26.3: the fresh HMB_DBA
+--                session is audited (LOGON ... LOGOFF), HMB_APP is not.
 --              - The way back (run by reset.sql) - NOAUDIT needs the same BY
 --                clause as the AUDIT, DROP fails while the policy is enabled:
 --                  NOAUDIT POLICY hmb_loc_priv_usr_act_pol BY USERS WITH GRANTED ROLES dba;
@@ -39,6 +40,8 @@ SET VERIFY OFF
 SET LINESIZE 160 PAGESIZE 100
 
 ALTER SESSION SET CONTAINER = DEMOPDB;
+-- DBMS_OUTPUT state is per container: re-enable after every switch
+SET SERVEROUTPUT ON SIZE UNLIMITED
 
 PROMPT == Step 1: all top-level actions of privileged users ===================
 CREATE AUDIT POLICY hmb_loc_priv_usr_act_pol

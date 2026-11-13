@@ -54,6 +54,8 @@ SELECT con_id, username, password_versions, account_status
  ORDER BY con_id, username;
 
 ALTER SESSION SET CONTAINER = DEMOPDB;
+-- DBMS_OUTPUT state is per container: re-enable after every switch
+SET SERVEROUTPUT ON SIZE UNLIMITED
 
 PROMPT == Step 2: pre-check for target 12a - who would be locked out? =========
 DECLARE
@@ -63,6 +65,7 @@ BEGIN
   FOR r IN (SELECT username, account_status, password_versions
               FROM dba_users
              WHERE authentication_type = 'PASSWORD'
+               AND oracle_maintained = 'N'   -- SYS, SYSTEM, XS$NULL ... are a separate topic
                AND password_versions IS NOT NULL
              ORDER BY username) LOOP
     IF r.password_versions NOT LIKE '%12C%' THEN
@@ -85,10 +88,14 @@ HOST bash ./sqlnet_alv.sh set 12a
 PROMPT - reconnect: the next ALTER USER must run in a process that read 12a
 CONNECT / AS SYSDBA
 ALTER SESSION SET CONTAINER = DEMOPDB;
+SET SERVEROUTPUT ON SIZE UNLIMITED
 
 PROMPT == Step 4: strip 10G/11G where a 12C verifier exists (no password needed)
--- LAB-CHECK: 19.27 accepts IDENTIFIED BY VALUES 'T:<hex>' (12C only) and the
--- account keeps its password; PASSWORD_VERSIONS becomes '12C'.
+-- verified 2026-11-13 on 19.27: IDENTIFIED BY VALUES 'T:<hex>' is accepted, the
+-- account keeps its password (listener login OK), PASSWORD_VERSIONS = '12C'.
+-- Lab scope: HMB_* only. Without the filter the step also strips the 11G
+-- verifier of the lab baseline accounts (LAB_ADMIN, LAB_USER, PDBADMIN), which
+-- reset.sql cannot restore without their passwords. In real life: drop the filter.
 DECLARE
   l_t VARCHAR2(4000);
 BEGIN
@@ -96,6 +103,7 @@ BEGIN
               FROM dba_users u JOIN sys.user$ s ON s.name = u.username
              WHERE u.oracle_maintained = 'N'
                AND u.authentication_type = 'PASSWORD'
+               AND u.username LIKE 'HMB\_%' ESCAPE '\'
                AND u.password_versions LIKE '%12C%'
                AND (u.password_versions LIKE '%10G%' OR u.password_versions LIKE '%11G%')) LOOP
     l_t := REGEXP_SUBSTR(r.spare4, 'T:[0-9A-F]+');

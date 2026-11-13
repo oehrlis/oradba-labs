@@ -40,7 +40,7 @@ COLUMN keys            FORMAT 999
 COLUMN tablespace_name FORMAT A16
 COLUMN encrypted       FORMAT A9
 COLUMN encryptionalg   FORMAT A8
-COLUMN file_name       FORMAT A70
+COLUMN file_name       FORMAT A100
 COLUMN verdict         FORMAT A50
 
 PROMPT == 1. TDE parameters: memory vs spfile (spfile != memory = restart pending)
@@ -60,6 +60,8 @@ PROMPT == 3. Master encryption keys per container =============================
 SELECT con_id, COUNT(*) AS keys FROM v$encryption_keys GROUP BY con_id ORDER BY con_id;
 
 ALTER SESSION SET CONTAINER = DEMOPDB;
+-- DBMS_OUTPUT state is per container: re-enable after every switch
+SET SERVEROUTPUT ON SIZE UNLIMITED
 
 PROMPT == 4. HMB_PLAIN_TS in DEMOPDB ===========================================
 SELECT t.tablespace_name, t.encrypted, e.encryptionalg
@@ -80,6 +82,7 @@ SELECT CASE WHEN COUNT(*) = 0 THEN 'NO ROWS - setup.sql not run?'
   FROM hmb_tde.customer_cards WHERE marker = 'HMB-TDE-CANARY';
 
 ALTER SESSION SET CONTAINER = CDB$ROOT;
+SET SERVEROUTPUT ON SIZE UNLIMITED
 ALTER SYSTEM CHECKPOINT;
 
 PROMPT == 6. Clear text on disk: lines with HMB-TDE-CANARY in the datafile (0 = encrypted)

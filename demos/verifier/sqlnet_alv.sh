@@ -15,8 +15,9 @@
 #                from setup.sql, solution.sql, check.sql and reset.sql.
 #              - File: $SQLNET_FILE, else $TNS_ADMIN/sqlnet.ora, else
 #                $ORACLE_HOME/network/admin/sqlnet.ora.
-#                LAB-CHECK: which sqlnet.ora the bequeath and the listener-spawned
-#                server processes of seclab-db19 / seclab-db26 really read.
+#                verified 2026-11-13 on 19.27 / 23.26.3: bequeath and listener-spawned
+#                server processes read the same file ($ORACLE_HOME/network/admin
+#                is a symlink to the TNS_ADMIN/dbconfig copy in both images).
 #              - sqlnet.ora is a file: 'make reset' (flashback) does not revert it.
 #                'backup' saves it once, 'restore' puts it back (or removes it if
 #                it did not exist before) - every change prints old -> new.

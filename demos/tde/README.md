@@ -4,7 +4,7 @@
 requires: seclab
 databases: db26
 pdb: DEMOPDB
-verified: no - LAB-CHECK open
+verified: yes (2026-11-13, 23.26.3 - db26 only, not run on 19.27)
 ```
 
 hold-my-beer round 3 (breaking point), DOAG AK 2026. Pool entry: `TDE-Keystore mit WALLET_ROOT` /
@@ -22,14 +22,16 @@ AI pitfall named in the pool: the old `sqlnet.ora` `ENCRYPTION_WALLET_LOCATION` 
 ## Why db26
 
 - The pitfall becomes visible: `ENCRYPTION_WALLET_LOCATION` is deprecated in 19c and still works
-  there; on 26ai it is gone (LAB-CHECK: desupported in 23ai), so an AI answer in the old syntax
-  fails on the beamer instead of passing unnoticed
-- The restart is the breaking point of this round; 26ai Free restarts faster than the 19c EE
-  instance (LAB-CHECK: about 60-90 s)
+  there; on 26ai it is gone: with `ENCRYPTION_WALLET_LOCATION` in `sqlnet.ora` and no
+  `WALLET_ROOT`, `V$ENCRYPTION_WALLET` fails with ORA-46693 (verified on 23.26.3), so an AI
+  answer in the old syntax fails on the beamer instead of passing unnoticed
+- The restart is the breaking point of this round; 26ai Free restarts fast (verified: about
+  5 s for `SHUTDOWN IMMEDIATE` + `STARTUP` in `seclab-db26`)
 - The reused oracle-free-labs TDE scripts were built and run on Oracle Free
 - db19 stays untouched for round 1 - a restart that goes wrong in round 3 cannot break it
 
-The scripts work on 19c the same way (setup.sql only warns); the old syntax would not fail there.
+The scripts are written to work on 19c the same way (setup.sql only warns; not run on db19 -
+round 1 keeps it untouched); the old syntax would not fail there.
 
 ## Starting point (`setup.sql`)
 
@@ -49,7 +51,8 @@ is set, the wallet directory exists or `HMB_PLAIN_TS` exists.
 5. `SET KEY ... WITH BACKUP ... CONTAINER = ALL` - united mode, keys for root and every PDB
 6. `CREATE LOCAL AUTO_LOGIN KEYSTORE FROM KEYSTORE` - lab only; production: password keystore
    with external store or OKV/HSM
-7. `ALTER TABLESPACE hmb_plain_ts ENCRYPTION ONLINE USING 'AES256' ENCRYPT FILE_NAME_CONVERT = (...)`
+7. `ALTER TABLESPACE hmb_plain_ts ENCRYPTION ONLINE USING 'AES256' ENCRYPT` - `DEMOPDB` uses OMF,
+   `FILE_NAME_CONVERT` is rejected there (ORA-28437); the script adds it only without OMF
 8. `check.sql`: parameters set (memory = spfile), keystore `OPEN`, `ENCRYPTED = YES`, scan 0,
    rows still readable
 
@@ -66,8 +69,8 @@ logs - encryption is not a wipe.
 | --- | --- | --- |
 | Before the session | `setup.sql`, one `check.sql` (before picture) | 2 min |
 | Round 3, minute 1 | `WALLET_ROOT` SCOPE=SPFILE, announce the restart | speaker |
-| Round 3, minute 1-2 | `SHUTDOWN IMMEDIATE` / `STARTUP` in `seclab-db26` only | 60-90 s (LAB-CHECK) - co-host talks |
-| After the session | `reset.sql` (second restart), then `make reset LAB=seclab` | 3-5 min, not during the talk |
+| Round 3, minute 1-2 | `SHUTDOWN IMMEDIATE` / `STARTUP` in `seclab-db26` only | about 5 s (measured) - co-host talks |
+| After the session | `reset.sql` (second restart), optionally `make reset LAB=seclab` | 6-7 s plus the flashback, not during the talk |
 
 The restart ends every session on `seclab-db26`, nothing on `seclab-db19`. If `STARTUP` fails:
 `docker exec -it seclab-db26 bash`, check the alert log, `STARTUP` again - a wrong `WALLET_ROOT`
@@ -85,12 +88,19 @@ Fallback for the round: show `check.sql` and the solution steps without the rest
 
 5 minutes hard - tight. If the voting picks TDE, pre-stage nothing: the restart is the point.
 
+Measured 2026-11-13 on 23.26.3 (three runs): `setup.sql` 0-3 s, `check.sql` under 1 s,
+`solution.sql` 8-11 s including the restart (after the password prompt), `reset.sql` 5.5-7 s
+including the restart.
+
 ## Run
 
+The repo's `demos/` is mounted read-only in both containers at `/opt/oracle/demos`. Run it with
+`-it`: the `ACCEPT ... HIDE` password prompt of `solution.sql` needs a terminal - with stdin
+piped it reads an empty password and `CREATE KEYSTORE` fails with ORA-01741 after the restart.
+
 ```bash
-# from the repo root, lab running (make up LAB=seclab)
-docker cp demos/tde/. seclab-db26:/tmp/hmb-tde
-docker exec -it -w /tmp/hmb-tde seclab-db26 bash -c 'export ORAENV_ASK=NO; "${ORACLE_HOME}/bin/sqlplus" / as sysdba'
+# lab running (make up LAB=seclab)
+docker exec -it -w /opt/oracle/demos/tde seclab-db26 bash -c 'export ORAENV_ASK=NO; "${ORACLE_HOME}/bin/sqlplus" / as sysdba'
 ```
 
 ```sql
@@ -101,37 +111,57 @@ docker exec -it -w /tmp/hmb-tde seclab-db26 bash -c 'export ORAENV_ASK=NO; "${OR
 @reset.sql
 ```
 
-Then, outside SQL*Plus: `make reset LAB=seclab`.
+`setup.sql` can follow `reset.sql` directly for the next rehearsal - no `make reset` needed.
 
 ## Reset
 
-Order: `@reset.sql` first, then `make reset LAB=seclab`. reset.sql drops `HMB_TDE` and every
-`HMB_*` tablespace with its datafiles (keystore still open), resets `TDE_CONFIGURATION` and
-`WALLET_ROOT` in the spfile (old value printed), shuts down, removes the wallet directory (only if
-the path ends in `/wallet`, otherwise it prints what to remove) and starts again. The flashback
-afterwards removes the remaining key metadata from the database.
+`@reset.sql` drops `HMB_TDE` and every `HMB_*` tablespace with its datafiles (keystore still
+open), resets `TDE_CONFIGURATION` and `WALLET_ROOT` in the spfile (old value printed), shuts down,
+removes the wallet directory (only if the path ends in `/wallet`, otherwise it prints what to
+remove; an empty parent directory goes too) and starts again. The database opens without a
+keystore, `LAB_BASELINE` stays.
+
+Two lab-only workarounds, both `SCOPE = MEMORY`, both printed when used:
+
+- the lab's guaranteed restore point `LAB_BASELINE` blocks `DROP TABLESPACE` (ORA-38881).
+  `reset.sql` sets `_allow_drop_ts_with_grp` for the drop only, and only if every `HMB_*`
+  datafile was created after the newest guaranteed restore point - a flashback to it never needs
+  the dropped file. Otherwise it skips the drop with a WARN
+- after `reset.sql` the database still references the deleted master keys
+  (`V$DATABASE_KEY_INFO`). The next `SET KEY` fails with ORA-46665 for the PDBs; `solution.sql`
+  detects that case and sets `_db_discard_lost_masterkey` for that one statement (`LAB:` lines)
 
 `make reset LAB=seclab` (flashback) does **not** revert:
 
+- the master key references in the control file (`V$DATABASE_KEY_INFO`) - verified 2026-11-13:
+  3 references before and after `make reset`. `solution.sql` handles them; for a database that
+  has never seen a keystore use `make rebuild LAB=seclab`
 - spfile parameters `WALLET_ROOT` and `TDE_CONFIGURATION` - the spfile is not part of the
   flashback; after a flashback alone the instance still points at the old keystore
 - the keystore files under `WALLET_ROOT` (`ewallet.p12`, `cwallet.sso`, the `WITH BACKUP` copy) -
   files on a persistent mount, they survive `make down` / `make up` too
 - datafiles created after `LAB_BASELINE` are left as orphans on disk - hence the `DROP TABLESPACE
-  ... INCLUDING CONTENTS AND DATAFILES` before the flashback
-- `/tmp/hmb-tde` in the container
+  ... INCLUDING CONTENTS AND DATAFILES` in `reset.sql`
+
+Whether the flashback also removes the master key references was not tested (the lab lifecycle
+is owned elsewhere); `solution.sql` works either way.
 
 No audit policy is created; `ADMINISTER KEY MANAGEMENT` is audited mandatorily and those records
-are reverted by the flashback.
+stay in the trail.
 
-## LAB-CHECK
+## Verified (2026-11-13, 23.26.3)
 
-- `WALLET_ROOT` default `<diagnostic_dest>/dbconfig/FREE/wallet` (= `/opt/oracle/dbconfig/FREE/wallet`)
-  lies on a persistent mount of `seclab-db26`
-- `ENCRYPTION_WALLET_LOCATION` in sqlnet.ora is desupported (rejected / ignored) on 23.26.3
-- `SHUTDOWN` / `STARTUP` inside the Free container keeps the container up; duration
-- `CREATE LOCAL AUTO_LOGIN KEYSTORE FROM KEYSTORE` without a path, and online conversion with
-  `FILE_NAME_CONVERT` on 23.26.3 Free
-- CDB and PDBs open without keystore after reset.sql although master keys were set; a second full
-  rehearsal (setup, solution, reset, make reset) runs clean - no ORA-28374 / ORA-46630
-- `grep -a` present in the image
+- `WALLET_ROOT` = `<diagnostic_dest>/dbconfig/FREE/wallet` (= `/opt/oracle/dbconfig/FREE/wallet`)
+  lies on a persistent bind mount of `seclab-db26`
+- `ENCRYPTION_WALLET_LOCATION` in `sqlnet.ora` without `WALLET_ROOT`: ORA-46693 on
+  `V$ENCRYPTION_WALLET` (tested with a temporary entry, `sqlnet.ora` restored byte-identical)
+- `SHUTDOWN` / `STARTUP` inside the Free container keeps the container up, about 5 s
+- `CREATE LOCAL AUTO_LOGIN KEYSTORE FROM KEYSTORE` without a path writes `cwallet.sso` into
+  `WALLET_ROOT/tde`; online conversion works, but without `FILE_NAME_CONVERT` (OMF, ORA-28437);
+  the old clear-text datafile is removed, the scan of the new one finds 0 markers
+- CDB and PDBs open without keystore after `reset.sql` although master keys were set; two full
+  rehearsals in a row without `make reset` ran clean with the two workarounds above (plus
+  two runs aborted while fixing the scripts, cleaned up by the same `reset.sql`)
+- `DBMS_OUTPUT` is per container and lost after `STARTUP`: the scripts re-enable `SERVEROUTPUT`
+- `grep -a` (GNU grep 3.1) is in the image
+- not run on db19 (19.27): the task says db26 only, round 1 keeps db19 untouched

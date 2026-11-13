@@ -4,7 +4,7 @@
 requires: seclab
 databases: db19          # db26 only as read-only contrast (check.sql) or probe, see below
 pdb: DEMOPDB
-verified: no - LAB-CHECK open
+verified: yes (2026-11-13, 19.27 / 23.26.3)
 ```
 
 hold-my-beer round 1 (warm-up), DOAG AK 2026. Pool entry: `10G-Passwort-Verifier finden und
@@ -59,15 +59,18 @@ switch), and old clients without `O5L_NP` that `12a` locks out.
 
 5 minutes hard. Before the session: `setup.sql` and one `check.sql` run (about 1 min).
 
+Measured 2026-11-13 on 19.27 (three runs): `setup.sql` 1 s, `solution.sql` 1 s,
+`check.sql` 1-2 s, `reset.sql` 1 s - the 5 minutes are thinking time, not run time.
+
 ## Run
 
-The demo directory is copied into the container, so `HOST` calls and `sqlnet_alv.sh` run there
-(the helper edits the server `sqlnet.ora` inside the container):
+The repo's `demos/` is mounted read-only in both containers at `/opt/oracle/demos`. Start
+SQL*Plus in the demo directory, so `HOST bash ./sqlnet_alv.sh` runs there (the helper edits the
+server `sqlnet.ora` inside the container; its backup lives next to that file, not in the mount):
 
 ```bash
-# from the repo root, lab running (make up LAB=seclab)
-docker cp demos/verifier/. seclab-db19:/tmp/hmb-verifier
-docker exec -it -w /tmp/hmb-verifier seclab-db19 bash -c 'export ORAENV_ASK=NO; "${ORACLE_HOME}/bin/sqlplus" / as sysdba'
+# lab running (make up LAB=seclab)
+docker exec -it -w /opt/oracle/demos/verifier seclab-db19 bash -c 'export ORAENV_ASK=NO; "${ORACLE_HOME}/bin/sqlplus" / as sysdba'
 ```
 
 ```sql
@@ -85,29 +88,41 @@ and `HmbDemo_New_Lab_Only_19` - lab-only demo values, letters, digits and unders
 
 `@reset.sql` drops the `HMB_*` accounts and restores `sqlnet.ora` from the saved copy (or
 removes it if it did not exist before). Run it after every rehearsal and after the session.
+Verified 2026-11-13: after `reset.sql` the `sqlnet.ora` is byte-identical to the baseline on
+both databases. `setup.sql` is rerunnable without a reset in between (it sets `12` and reconnects
+before it creates `HMB_MODERN`).
 
 `make reset LAB=seclab` (flashback to `LAB_BASELINE`) does **not** revert:
 
 - `sqlnet.ora` (`SQLNET.ALLOWED_LOGON_VERSION_SERVER`) - a file, not database content.
   After a flashback alone the lab keeps `11` (after setup) or `12a` (after solution), and
   `sqlnet.ora.hmb-verifier.bak` stays next to it; `reset.sql` handles both
-- `/tmp/hmb-verifier` in the container - remove with `docker exec seclab-db19 rm -rf /tmp/hmb-verifier`
 
 ## db26 (26ai Free)
 
-Expected: 26ai does not create 10G verifiers at all, so the exercise cannot be shown there.
+26ai does not create 10G verifiers at all, so the exercise cannot be shown there.
 `check.sql` sections 1-2 run on db26 as read-only contrast. To answer the question once in a
 rehearsal, run `setup.sql` on `seclab-db26`: it ends with a `RESULT:` line saying whether a 10G
 verifier was generated, then run `reset.sql`.
-LAB-CHECK: 26ai behaviour with `ALLOWED_LOGON_VERSION_SERVER=11` (ignored, error, or 10G).
+Verified 2026-11-13 on 23.26.3: `ALLOWED_LOGON_VERSION_SERVER=11` is accepted without error
+or warning, `CREATE USER` still generates `11G 12C` only (`RESULT: ... generated NO 10G
+verifier`), so the `IDENTIFIED BY VALUES` step is skipped and all three accounts log in.
 
-## LAB-CHECK
+## Verified (2026-11-13, 19.27 / 23.26.3)
 
 - 19.27 generates `10G 11G 12C` with `ALLOWED_LOGON_VERSION_SERVER=11` in a reconnected
   bequeath session
 - `IDENTIFIED BY VALUES '<16 hex>'` leaves a 10G-only account; `IDENTIFIED BY VALUES 'T:...'`
-  leaves a 12C-only account with an unchanged password
-- the `sqlnet.ora` that bequeath and listener-spawned processes read (`TNS_ADMIN` in the
-  container); `awk` and `mktemp` present in the image; files from `docker cp` readable by `oracle`
-- EZConnect `localhost:1521/DEMOPDB` works inside the container; the error a 10G-only account
-  gets under `12a` (ORA-01017 or ORA-28040)
+  leaves a 12C-only account with an unchanged password (listener login with the old password OK)
+- `sqlnet.ora`: `TNS_ADMIN` is unset in `docker exec`, so the helper edits
+  `$ORACLE_HOME/network/admin/sqlnet.ora`. On db19 that is a symlink into the directory that
+  listener and instance have as `TNS_ADMIN`, on db26 a symlink into `dbconfig/FREE` (no
+  `TNS_ADMIN`) - bequeath and listener-spawned processes read the same file. `awk` and
+  `mktemp` are in both images
+- EZConnect needs the service with `db_domain`: `localhost:1521/DEMOPDB` gives ORA-12514,
+  `check.sql` derives `demopdb.oradba.ch` from `db_domain`. A 10G-only account under `12a` gets
+  ORA-01017 (not ORA-28040) - indistinguishable from a wrong password, which is the trap
+- `DBMS_OUTPUT` is per container: the scripts re-enable `SERVEROUTPUT` after every
+  `ALTER SESSION SET CONTAINER`, otherwise the pre-check prints nothing
+- `solution.sql` strips legacy verifiers of `HMB_*` accounts only; unfiltered it also strips the
+  `11G` verifier of `LAB_ADMIN`, `LAB_USER` and `PDBADMIN`, which `reset.sql` cannot restore

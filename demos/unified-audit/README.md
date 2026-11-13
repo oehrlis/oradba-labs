@@ -4,7 +4,7 @@
 requires: seclab
 databases: db19, db26
 pdb: DEMOPDB
-verified: no - LAB-CHECK open
+verified: yes (2026-11-13, 19.27 / 23.26.3)
 ```
 
 hold-my-beer round 2 (everyday DBA work), DOAG AK 2026. Pool entry: `Unified Audit Policy fuer
@@ -25,7 +25,8 @@ AI pitfalls named in the pool: traditional/unified syntax mix, forgotten NOAUDIT
 - only the Oracle default policies enabled (seclab baseline)
 - decoy: `AUDIT SELECT ANY TABLE BY hmb_dba BY ACCESS` - traditional syntax. On 19c it is
   accepted and shows up in `DBA_PRIV_AUDIT_OPTS`, but pure mode writes no record. That is what
-  an AI answer in traditional syntax produces: it looks configured and audits nothing
+  an AI answer in traditional syntax produces: it looks configured and audits nothing. 26ai
+  rejects it (ORA-46401, traditional auditing desupported) - `setup.sql` reports that and goes on
 
 ## Expected solution (`solution.sql`)
 
@@ -56,12 +57,27 @@ dba` also covers `SYS` and `LAB_ADMIN`; traditional `AUDIT` statements do nothin
 
 5 minutes hard. Before the session: `setup.sql` and one `check.sql` run (the "before" picture).
 
+Measured 2026-11-13 (three runs on 19.27, two on 23.26.3):
+
+<!-- markdownlint-disable MD013 MD060 -->
+| Script | 19.27 | 23.26.3 |
+| --- | --- | --- |
+| `setup.sql` | 6 s | 1 s |
+| `solution.sql` | 5-6.5 s | 0.3 s |
+| `check.sql` | 1 s | 1 s |
+| `reset.sql` | 17 s | 0.2-0.8 s |
+<!-- markdownlint-restore -->
+
+On 19.27 every query on `AUDIT_UNIFIED_POLICIES` takes about 5 s - that is the whole difference.
+Start `reset.sql` right after the round, not while the next team is waiting.
+
 ## Run
 
+The repo's `demos/` is mounted read-only in both containers at `/opt/oracle/demos`:
+
 ```bash
-# from the repo root, lab running (make up LAB=seclab); DB=db19 or db26
-docker cp demos/unified-audit/. seclab-db19:/tmp/hmb-unified-audit
-docker exec -it -w /tmp/hmb-unified-audit seclab-db19 bash -c 'export ORAENV_ASK=NO; "${ORACLE_HOME}/bin/sqlplus" / as sysdba'
+# lab running (make up LAB=seclab); seclab-db19 or seclab-db26
+docker exec -it -w /opt/oracle/demos/unified-audit seclab-db19 bash -c 'export ORAENV_ASK=NO; "${ORACLE_HOME}/bin/sqlplus" / as sysdba'
 ```
 
 ```sql
@@ -85,15 +101,23 @@ common policy in `CDB$ROOT` - are reported with the commands, not dropped. Name 
 `HMB_*` so the sweep catches them.
 
 `make reset LAB=seclab` (flashback) reverts policies, accounts and the audit trail - this demo
-changes no spfile parameter and no file. Not reverted: `/tmp/hmb-unified-audit` in the
-container. Without `make reset` the trail keeps the records of earlier rehearsals for the same
-user names; `check.sql` shows the newest first.
+changes no spfile parameter and no file. Without `make reset` the trail keeps the records of
+earlier rehearsals for the same user names; `check.sql` shows the newest first.
 
-## LAB-CHECK
+Verified 2026-11-13: after `reset.sql` the enabled policies in `CDB$ROOT`, `DEMOPDB` and
+`LABPDB1` equal the baseline on both databases. The sweep was tested with two extra live-style
+policies (`BY hmb_app` and `EXCEPT hmb_app`): both were disabled and dropped.
 
-- 26ai: traditional `AUDIT SELECT ANY TABLE BY ...` is rejected (setup reports it either way);
-  `DBA_STMT_AUDIT_OPTS` / `DBA_PRIV_AUDIT_OPTS` still exist
-- `DBMS_AUDIT_MGMT.FLUSH_UNIFIED_AUDIT_TRAIL` callable on 26ai (check.sql tolerates an error)
-- `AUDIT_UNIFIED_POLICIES.ORACLE_SUPPLIED` and `COMMON` on 19.27 and 23.26.3
-- enablement takes effect for the next session on both releases
-- EZConnect `localhost:1521/DEMOPDB` inside both containers
+## Verified (2026-11-13, 19.27 / 23.26.3)
+
+- 26ai rejects the traditional `AUDIT SELECT ANY TABLE BY ...` with ORA-46401; `NOAUDIT` of it
+  is still accepted. `DBA_STMT_AUDIT_OPTS` / `DBA_PRIV_AUDIT_OPTS` exist on both releases
+- `DBMS_AUDIT_MGMT.FLUSH_UNIFIED_AUDIT_TRAIL` no longer exists on 23.26.3 (PLS-00302 at
+  compile time); `check.sql` calls it dynamically on 19c only. The records are there without it
+- `AUDIT_UNIFIED_POLICIES.ORACLE_SUPPLIED` and `COMMON` exist on both releases
+- the fresh `HMB_DBA` session after the `AUDIT POLICY` is audited on both releases; `HMB_APP`
+  reading the same table via object grant leaves no record
+- EZConnect needs the service with `db_domain`: `localhost:1521/DEMOPDB` gives ORA-12514,
+  `check.sql` derives `demopdb.oradba.ch` from `db_domain`
+- `DBMS_OUTPUT` is per container: the scripts re-enable `SERVEROUTPUT` after every
+  `ALTER SESSION SET CONTAINER`

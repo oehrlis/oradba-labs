@@ -17,8 +17,8 @@
 --                  1. reset.sql (this script): drop the encrypted tablespace
 --                     while the keystore is still open, reset both parameters
 --                     in the spfile, SHUTDOWN, remove the wallet, STARTUP.
---                  2. make reset LAB=seclab: flashback removes the remaining
---                     key metadata from the database (LAB-CHECK below).
+--                  2. make reset LAB=seclab: flashback to LAB_BASELINE (not
+--                     needed for the next rehearsal, see below).
 --                'make reset' alone leaves WALLET_ROOT/TDE_CONFIGURATION in the
 --                spfile and the keystore on disk (with keys the flashed-back
 --                database no longer knows); setup.sql then refuses to start.
@@ -27,8 +27,11 @@
 --                it ends in /wallet - otherwise the command is printed.
 --              - This demo creates no audit policy. ADMINISTER KEY MANAGEMENT
 --                is audited mandatorily; those records stay (no purge).
---              - LAB-CHECK: CDB and PDBs open without the keystore once the
---                encrypted tablespace is gone, although master keys were set.
+--              - verified 2026-11-13 on 23.26.3: CDB and PDBs open without the
+--                keystore once the encrypted tablespace is gone, although master
+--                keys were set. The key references stay in the database
+--                (V$DATABASE_KEY_INFO) - the next solution.sql run discards them
+--                (lab only), so rehearsals work without 'make reset'.
 --  License...: Apache License Version 2.0, January 2004 as shown
 --              at http://www.apache.org/licenses/
 --------------------------------------------------------------------------------
@@ -58,7 +61,42 @@ SELECT COALESCE(
   FROM dual;
 PROMPT - wallet directory: &wallet_root
 
+PROMPT - 0. Guaranteed restore point vs. DROP TABLESPACE
+-- verified 2026-11-13 on 23.26.3: with the lab's guaranteed restore point
+-- LAB_BASELINE, DROP TABLESPACE fails with ORA-38881 - Oracle cannot know that
+-- the tablespace did not exist at the restore point. The lab keeps LAB_BASELINE,
+-- so the drop is allowed for this session's instance only (SCOPE = MEMORY,
+-- underscore parameter, lab only) - and only if every HMB_* datafile was created
+-- after the newest guaranteed restore point, so a flashback to it never needs
+-- the dropped file. Reset to FALSE right after the drop; the restart below
+-- clears it in any case. Otherwise the drop is skipped and reported.
+DEFINE hmb_grp_override = 'NO'
+COLUMN grp_override NEW_VALUE hmb_grp_override NOPRINT
+SELECT CASE
+         WHEN NOT EXISTS (SELECT 1 FROM v$restore_point WHERE guarantee_flashback_database = 'YES') THEN 'NOT_NEEDED'
+         WHEN NOT EXISTS (SELECT 1 FROM v$tablespace t JOIN v$containers c ON c.con_id = t.con_id
+                           WHERE c.name = 'DEMOPDB' AND t.name LIKE 'HMB\_%' ESCAPE '\') THEN 'NOT_NEEDED'
+         WHEN (SELECT MIN(d.creation_change#)
+                 FROM v$datafile d
+                 JOIN v$tablespace t ON t.ts# = d.ts# AND t.con_id = d.con_id
+                 JOIN v$containers c ON c.con_id = d.con_id
+                WHERE c.name = 'DEMOPDB' AND t.name LIKE 'HMB\_%' ESCAPE '\')
+              > (SELECT MAX(scn) FROM v$restore_point WHERE guarantee_flashback_database = 'YES') THEN 'YES'
+         ELSE 'NO'
+       END AS grp_override
+  FROM dual;
+PROMPT - drop override needed and safe: &hmb_grp_override
+BEGIN
+  IF '&hmb_grp_override' = 'YES' THEN
+    EXECUTE IMMEDIATE 'ALTER SYSTEM SET "_allow_drop_ts_with_grp" = TRUE SCOPE = MEMORY';
+    dbms_output.put_line('- _allow_drop_ts_with_grp = TRUE (memory, until the restart below)');
+  END IF;
+END;
+/
+
 ALTER SESSION SET CONTAINER = DEMOPDB;
+-- DBMS_OUTPUT state is per container: re-enable after every switch
+SET SERVEROUTPUT ON SIZE UNLIMITED
 
 PROMPT - 1. Drop demo schema and tablespace (keystore still open)
 BEGIN
@@ -67,8 +105,13 @@ BEGIN
     dbms_output.put_line('- dropped user HMB_TDE');
   END LOOP;
   FOR r IN (SELECT tablespace_name FROM dba_tablespaces WHERE tablespace_name LIKE 'HMB\_%' ESCAPE '\') LOOP
-    EXECUTE IMMEDIATE 'DROP TABLESPACE "' || r.tablespace_name || '" INCLUDING CONTENTS AND DATAFILES';
-    dbms_output.put_line('- dropped tablespace ' || r.tablespace_name || ' including datafiles');
+    IF '&hmb_grp_override' IN ('YES', 'NOT_NEEDED') THEN
+      EXECUTE IMMEDIATE 'DROP TABLESPACE "' || r.tablespace_name || '" INCLUDING CONTENTS AND DATAFILES';
+      dbms_output.put_line('- dropped tablespace ' || r.tablespace_name || ' including datafiles');
+    ELSE
+      dbms_output.put_line('WARN: ' || r.tablespace_name || ' NOT dropped - it existed before a guaranteed '
+        || 'restore point (ORA-38881). make reset LAB=seclab (flashback) removes it.');
+    END IF;
   END LOOP;
   -- a live solution may have set TDE_CONFIGURATION in the PDB as well
   BEGIN
@@ -87,6 +130,14 @@ END;
 /
 
 ALTER SESSION SET CONTAINER = CDB$ROOT;
+SET SERVEROUTPUT ON SIZE UNLIMITED
+BEGIN
+  IF '&hmb_grp_override' = 'YES' THEN
+    EXECUTE IMMEDIATE 'ALTER SYSTEM SET "_allow_drop_ts_with_grp" = FALSE SCOPE = MEMORY';
+    dbms_output.put_line('- _allow_drop_ts_with_grp = FALSE again');
+  END IF;
+END;
+/
 
 PROMPT - 2. Reset WALLET_ROOT and TDE_CONFIGURATION in the spfile (old value shown)
 DECLARE
@@ -109,8 +160,10 @@ END;
 
 PROMPT - 3. Shutdown, remove the wallet, startup
 SHUTDOWN IMMEDIATE
-HOST case "&wallet_root" in */wallet) rm -rf -- "&wallet_root"; echo "- removed &wallet_root";; *) echo "WARN: &wallet_root does not end in /wallet - not removed, check and remove by hand";; esac
+HOST case "&wallet_root" in */wallet) rm -rf -- "&wallet_root"; rmdir -- "$(dirname -- "&wallet_root")" 2>/dev/null; echo "- removed &wallet_root (and its parent if empty)";; *) echo "WARN: &wallet_root does not end in /wallet - not removed, check and remove by hand";; esac
 STARTUP
+-- the restart ends the DBMS_OUTPUT state of this session as well
+SET SERVEROUTPUT ON SIZE UNLIMITED
 BEGIN
   FOR r IN (SELECT name FROM v$pdbs WHERE open_mode = 'MOUNTED' AND name <> 'PDB$SEED') LOOP
     EXECUTE IMMEDIATE 'ALTER PLUGGABLE DATABASE "' || r.name || '" OPEN';
@@ -135,5 +188,6 @@ SELECT p.name, NVL(p.value, '-') AS memory, NVL(s.value, '-') AS spfile
 SELECT con_id, wrl_parameter, status FROM v$encryption_wallet ORDER BY con_id;
 SELECT name AS pdb, open_mode FROM v$pdbs ORDER BY con_id;
 
+UNDEFINE hmb_grp_override wallet_root
 PROMPT - Next: make reset LAB=seclab (flashback, clears the remaining key metadata)
 -- EOF -------------------------------------------------------------------------
