@@ -1,0 +1,45 @@
+# ------------------------------------------------------------------------------
+# oradba-labs - base19: Oracle Database 19c EE, CDB + 1 PDB, Unified Audit pure
+# Image, version, ports and passwords: lab.env (copy of lab.env.example)
+# ------------------------------------------------------------------------------
+name: oradba-labs-base19
+
+services:
+  db19:
+    image: ${DB19_IMAGE}:${DB19_VERSION}
+    container_name: base19-db19
+    hostname: base19-db19
+    restart: "no"
+    environment:
+      CONTAINER: "TRUE"
+      ORACLE_SID: ${DB19_SID}
+      ORACLE_PDB: ${DB19_PDB}
+      ORACLE_PWD: ${ORACLE_PWD}
+      DOMAIN: ${DB_DOMAIN}
+      INSTANCE_INIT: /opt/oradba-labs/init
+    volumes:
+      - db19data:/u01
+      - ../../common:/opt/oradba-labs/common:ro
+      # setup hooks run once via labctl.sh after the first start, so a failing
+      # hook stops 'make up' instead of being skipped by the image init
+      - ./setup/db19:/opt/oradba-labs/setup:ro
+      - ./startup/db19:/opt/oradba-labs/init/startup:ro
+    ports:
+      - "127.0.0.1:${DB19_PORT}:1521"
+    mem_limit: ${DB19_MEM}
+    healthcheck:
+      test: ["CMD-SHELL", "$${ORADBA_INIT}/54_check_database.sh >/dev/null && test -f /tmp/oradba-labs.ready"]
+      interval: 20s
+      timeout: 30s
+      retries: 3
+      start_period: 60m
+    labels:
+      oradba.labs.kind: ora_db
+      oradba.labs.sid: ${DB19_SID}
+      oradba.labs.pdbs: ${DB19_PDB}
+      oradba.labs.port: ${DB19_PORT}
+      oradba.labs.datadir: /u01
+
+volumes:
+  db19data:
+# --- EOF ----------------------------------------------------------------------

@@ -1,0 +1,84 @@
+# ------------------------------------------------------------------------------
+# oradba-labs - seclab: default security lab, 19c EE + 26ai Free side by side.
+# Both: Unified Audit pure, PDB DEMOPDB with SCOTT, TVD_HR, LAB_ADMIN, LAB_USER.
+# Image, version, ports and passwords: lab.env (copy of lab.env.example)
+# ------------------------------------------------------------------------------
+name: oradba-labs-seclab
+
+services:
+  db19:
+    image: ${DB19_IMAGE}:${DB19_VERSION}
+    container_name: seclab-db19
+    hostname: seclab-db19
+    restart: "no"
+    environment:
+      CONTAINER: "TRUE"
+      ORACLE_SID: ${DB19_SID}
+      ORACLE_PDB: DEMOPDB
+      ORACLE_PWD: ${ORACLE_PWD}
+      DOMAIN: ${DB_DOMAIN}
+      INSTANCE_INIT: /opt/oradba-labs/init
+      LAB_ADMIN_PWD: ${LAB_ADMIN_PWD}
+      LAB_USER_PWD: ${LAB_USER_PWD}
+    volumes:
+      - db19data:/u01
+      - ../../common:/opt/oradba-labs/common:ro
+      # setup hooks run once via labctl.sh after the first start, so a failing
+      # hook stops 'make up' instead of being skipped by the image init
+      - ./setup/db19:/opt/oradba-labs/setup:ro
+      - ./startup/db19:/opt/oradba-labs/init/startup:ro
+    ports:
+      - "127.0.0.1:${DB19_PORT}:1521"
+    mem_limit: ${DB19_MEM}
+    healthcheck:
+      test: ["CMD-SHELL", "$${ORADBA_INIT}/54_check_database.sh >/dev/null && test -f /tmp/oradba-labs.ready"]
+      interval: 20s
+      timeout: 30s
+      retries: 3
+      start_period: 60m
+    labels:
+      oradba.labs.kind: ora_db
+      oradba.labs.sid: ${DB19_SID}
+      oradba.labs.pdbs: DEMOPDB
+      oradba.labs.users: SCOTT,TVD_HR,LAB_ADMIN,LAB_USER
+      oradba.labs.port: ${DB19_PORT}
+      oradba.labs.datadir: /u01
+
+  db26:
+    image: ${DB26_IMAGE}:${DB26_VERSION}
+    container_name: seclab-db26
+    hostname: seclab-db26
+    restart: "no"
+    environment:
+      ORACLE_PWD: ${ORACLE_PWD}
+      ENABLE_ARCHIVELOG: "true"
+      LAB_ADMIN_PWD: ${LAB_ADMIN_PWD}
+      LAB_USER_PWD: ${LAB_USER_PWD}
+    volumes:
+      - db26data:/opt/oracle/oradata
+      - ../../common:/opt/oradba-labs/common:ro
+      # setup hooks run once via labctl.sh after the first start (the Free image
+      # starts a prebuilt database and would skip them)
+      - ./setup/db26:/opt/oradba-labs/setup:ro
+      - ./startup/db26:/opt/oracle/scripts/startup:ro
+    ports:
+      - "127.0.0.1:${DB26_PORT}:1521"
+    mem_limit: ${DB26_MEM}
+    healthcheck:
+      test: ["CMD-SHELL", "\"$${SCRIPT_BASE_DIR}/$${CHECK_DB_FILE}\" >/dev/null && test -f /tmp/oradba-labs.ready"]
+      interval: 20s
+      timeout: 30s
+      retries: 3
+      start_period: 30m
+    labels:
+      oradba.labs.kind: free
+      oradba.labs.sid: FREE
+      oradba.labs.pdbs: DEMOPDB,FREEPDB1
+      oradba.labs.users: SCOTT,TVD_HR,LAB_ADMIN,LAB_USER
+      oradba.labs.port: ${DB26_PORT}
+      oradba.labs.datadir: /opt/oracle/oradata
+
+volumes:
+  db19data:
+  db26data:
+# --- EOF ----------------------------------------------------------------------

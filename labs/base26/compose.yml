@@ -1,0 +1,41 @@
+# ------------------------------------------------------------------------------
+# oradba-labs - base26: Oracle AI Database 26ai Free, CDB FREE + FREEPDB1
+# Image, version, ports and passwords: lab.env (copy of lab.env.example)
+# ------------------------------------------------------------------------------
+name: oradba-labs-base26
+
+services:
+  db26:
+    image: ${DB26_IMAGE}:${DB26_VERSION}
+    container_name: base26-db26
+    hostname: base26-db26
+    restart: "no"
+    environment:
+      ORACLE_PWD: ${ORACLE_PWD}
+      ENABLE_ARCHIVELOG: "true"
+    volumes:
+      - db26data:/opt/oracle/oradata
+      - ../../common:/opt/oradba-labs/common:ro
+      # setup hooks run once via labctl.sh after the first start (the Free image
+      # starts a prebuilt database and would skip them)
+      - ./setup/db26:/opt/oradba-labs/setup:ro
+      - ./startup/db26:/opt/oracle/scripts/startup:ro
+    ports:
+      - "127.0.0.1:${DB26_PORT}:1521"
+    mem_limit: ${DB26_MEM}
+    healthcheck:
+      test: ["CMD-SHELL", "\"$${SCRIPT_BASE_DIR}/$${CHECK_DB_FILE}\" >/dev/null && test -f /tmp/oradba-labs.ready"]
+      interval: 20s
+      timeout: 30s
+      retries: 3
+      start_period: 30m
+    labels:
+      oradba.labs.kind: free
+      oradba.labs.sid: FREE
+      oradba.labs.pdbs: FREEPDB1
+      oradba.labs.port: ${DB26_PORT}
+      oradba.labs.datadir: /opt/oracle/oradata
+
+volumes:
+  db26data:
+# --- EOF ----------------------------------------------------------------------

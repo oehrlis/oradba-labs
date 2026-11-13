@@ -1,0 +1,12 @@
+# Lab configuration with real passwords - only lab.env.example is tracked
+lab.env
+*.env
+!*.env.example
+# Local overrides and logs
+compose.override.yml
+*.log
+.DS_Store
+# Oracle binaries and patches never go into this public repo
+*.zip
+*.rpm
+*.tar.gz
