@@ -3,6 +3,15 @@
 All notable changes to this project are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning per [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- seclab db19: Java pool floor `java_pool_size = 64M` (spfile, new startup hook
+  `labs/seclab/startup/db19/05_java_pool.sql`). With the image default (16M under ASMM) repeated privesc
+  weak/reset cycles filled the pool and `stage.sh unweak` (m4b, `DBMS_JAVA`) failed with ORA-04031; online
+  growth is refused with ORA-04033, so it takes effect at the next restart. Set on the running lab 2026-11-16
+
 ## [0.2.0] - 2026-11-13
 
 ### Changed

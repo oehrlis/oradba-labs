@@ -21,6 +21,10 @@ Both databases:
   with `NOAUDIT`)
 - ARCHIVELOG, guaranteed restore point `LAB_BASELINE`
 - `demos/` of this repo mounted read-only at `/opt/oracle/demos`
+- db19 only: Java pool floor `java_pool_size = 64M` in the spfile (startup hook `05_java_pool.sql`). The image's
+  ASMM default gives the Java pool 16M; the privesc demo (m4b, `DBMS_JAVA` grants) filled it until
+  `stage.sh unweak` failed with ORA-04031. Online growth is refused (ORA-04033), so the floor applies from the
+  next restart - `make reset` restarts the instance
 
 ```bash
 make up LAB=seclab            # first start: dbca for 19c, about 15 min
