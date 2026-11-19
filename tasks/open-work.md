@@ -42,6 +42,21 @@
 - [ ] Archiver-Stillstand im Betrieb bleibt healthy: der Healthcheck liest nur `v$database.open_mode`,
   eine suspendierte Instanz meldet READ WRITE - nur `make verify` (FRA-WARN) zeigt es [P3]
 
+## audit26 - Audit-Lab, DB-Teil aus M3 vorgezogen (2026-11-19)
+
+- [x] `labs/audit26` aus base26 abgeleitet (AUDITPDB1, Port 1573, keine Lab-Policies)
+- [x] `make up LAB=audit26` (2:15), `make verify` 12 OK, `make reset` 14 s, verify danach gruen; Test
+  `ora-db-audit-eng/sql/tst_svc_volume_aud.sh` gelaufen
+- [-] `make lint` gruen; Diff an Stefan, Commit erst nach Freigabe, kein Push ohne Go [P1] (due: 2026-11-19)
+
+## M3 Rest audit26 - nicht vergessen
+
+- [ ] App-Simulator (classic/paas/k8s aus `ora-db-audit-eng/lab/app`) als Service in `labs/audit26` [P2] (due: 2026-12-04)
+- [ ] Alte Setup-Schritte 20-35 einordnen: Rollen, DBA-/Audit-User, ODBDBA-Kontext - Lab (`common/`) oder
+  Demo beim Konsumenten; Policy-SQL bleibt in `ora-db-audit-eng/sql/` [P2] (due: 2026-12-04)
+- [ ] `ora-db-audit-eng/lab` abloesen (Makefile `lab-*` auf `make ... LAB=audit26`, `lab/` per `git rm`,
+  CHANGELOG `Removed`), Migrationstabelle in `~/notes/prompts/lab-architecture.md` nachfuehren [P2] (due: 2026-12-04)
+
 ## Next
 
 - [ ] Rollen-Abschnitt in hold-my-beer, talks, oradba, ora-db-audit-eng (nach DOAG) [P2]
