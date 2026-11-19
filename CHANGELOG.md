@@ -5,6 +5,13 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+### Added
+
+- Lab `audit26`: Unified Auditing lab on top of `base26` (26ai Free, CDB `FREE` + `AUDITPDB1`, port 1573) with
+  `SCOTT`, `TVD_HR`, `LAB_ADMIN`, `LAB_USER` and no lab-owned audit policies - demos bring their own and measure
+  from a start timestamp. Database part of the M3 migration of `ora-db-audit-eng/lab`, pulled forward; the
+  application simulator and the remaining setup steps stay in M3
+
 ### Fixed
 
 - seclab db19: Java pool floor `java_pool_size = 64M` (spfile, new startup hook

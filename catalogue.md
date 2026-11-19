@@ -8,6 +8,7 @@ One line per lab. A demo names its lab (`requires: <lab>`), it does not bring it
 | `base19` | 19c EE: CDB `CDB19` + `LABPDB1` (core config of `labdb`), Unified Audit pure | `trivadis/ora_db:19.27.0.0` | 1561 | tests, base for 19c-only demos |
 | `base26` | 26ai Free = oracle-free-labs `labdb`: CDB `FREE` + `LABPDB1` | `oracle-free-labs:latest` (23.26.3) | 1571 | deep-data demos, base for 26ai-only demos |
 | `seclab` | Default security lab: 19c + 26ai side by side, `LABPDB1` + `DEMOPDB` (SCOTT, TVD_HR, LAB_ADMIN, LAB_USER) | both of the above | 1562, 1572 | security talks (privilege escalation, hold my beer exercises), trainings |
+| `audit26` | Unified Auditing lab: 26ai Free, CDB `FREE` + `AUDITPDB1` (SCOTT, TVD_HR, LAB_ADMIN, LAB_USER), no lab-owned audit policies | `oracle-free-labs:latest` (23.26.3) | 1573 | audit engineering (`ora-db-audit-eng` tests and demos) |
 <!-- markdownlint-restore -->
 
 ## Planned (not in M0)
@@ -15,5 +16,7 @@ One line per lab. A demo names its lab (`requires: <lab>`), it does not bring it
 - M0b: assign hold-my-beer and deep-data demos to a lab (`seclab` or `base26`)
 - M3: migrate the use cases from `docker/samples` (audit, tde, dbv, cmu, eus, pdb, rman,
   patch), the `oracle-free-labs` profiles (incl. its intentionally insecure assessment
-  baseline) and `ora-db-audit-eng/lab` - each becomes a lab here or is dropped on purpose
+  baseline) and `ora-db-audit-eng/lab` - each becomes a lab here or is dropped on purpose.
+  `ora-db-audit-eng/lab`: database part done as `audit26` (2026-11-19); open are the application simulator,
+  the old setup steps 20-35 (roles, DBA and audit users, ODBDBA context) and retiring `ora-db-audit-eng/lab`
 - M2: all labs on `oradba-docker` images (one line per lab in `lab.env`)

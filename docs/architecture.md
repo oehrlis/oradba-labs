@@ -159,7 +159,7 @@ recorded as a new decision instead of a parallel variant in another repository.
 | M0b | November 2026 | `oradba-labs` v0.2.0 with the E8-E11 mechanics; `base26` on the Free image with `LABPDB1`; `seclab` verifier tasks (19c), Unified Auditing with NOAUDIT, TDE | demo sessions start with `make up LAB=<lab>` plus a demo script |
 | M1 | week 47 | create `oradba-docker` (Free with configuration, Dockerfile from the legacy repository); lab rule; clean up orphan repositories | rule deployed, no orphan repositories left |
 | M2 | week 48 | `oradba-docker` builds 19c EE and Free via AutoUpgrade; labs switched to the new images; `oracle-free-labs` frozen | all labs run on `oradba-docker` images |
-| M3 | week 49 | migrate use cases (audit, TDE, Database Vault, CMU, EUS, PDB, RMAN, patching); deduplicate SQL; archive `docker` | every sample is a lab in the catalogue or deliberately dropped |
+| M3 | week 49 | migrate use cases (audit, TDE, Database Vault, CMU, EUS, PDB, RMAN, patching); deduplicate SQL; archive `docker`. Audit partly pulled forward: database part as `audit26` (2026-11-19), application simulator and retiring `ora-db-audit-eng/lab` remain | every sample is a lab in the catalogue or deliberately dropped |
 | M4 | week 50 | consolidate Ansible; `oci-labs` without its own roles; decide E7 | `oci-labs` pins `oradba.automation` |
 | M5 | week 51 | OCI runner: `make up LAB=<name> TARGET=oci` via the `oci-labs` building blocks; remaining OCI labs | one lab runs unchanged on Docker and on OCI |
 <!-- markdownlint-restore -->
