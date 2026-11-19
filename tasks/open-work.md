@@ -35,7 +35,7 @@
 - [x] `labs/audit26` aus base26 abgeleitet (AUDITPDB1, Port 1573, keine Lab-Policies)
 - [x] `make up LAB=audit26` (2:15), `make verify` 12 OK, `make reset` 14 s, verify danach gruen; Test
   `ora-db-audit-eng/sql/tst_svc_volume_aud.sh` gelaufen
-- [-] `make lint` gruen; Diff an Stefan, Commit erst nach Freigabe, kein Push ohne Go [P1] (due: 2026-11-19)
+- [x] `make lint` gruen; Diff freigegeben, committet und gepusht, PR nach main (2026-11-19)
 
 ## M3 Rest audit26 - nicht vergessen
 
