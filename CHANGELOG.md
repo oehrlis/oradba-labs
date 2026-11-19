@@ -17,6 +17,10 @@ All notable changes to this project are documented here. Format based on
 - `make up` names per database whether the image starts existing data or creates the database
   (same test as the image: `oradata/<SID>/` for `trivadis/ora_db`, `oradata/.<SID>.created` for Free;
   a running dbca - `make up` again during the first start - counts as creating)
+- Lab `audit26`: Unified Auditing lab on top of `base26` (26ai Free, CDB `FREE` + `AUDITPDB1`, port 1573) with
+  `SCOTT`, `TVD_HR`, `LAB_ADMIN`, `LAB_USER` and no lab-owned audit policies - demos bring their own and measure
+  from a start timestamp. Database part of the M3 migration of `ora-db-audit-eng/lab`, pulled forward; the
+  application simulator and the remaining setup steps stay in M3
 
 ### Changed
 
