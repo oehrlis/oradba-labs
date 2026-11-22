@@ -46,3 +46,8 @@ make tag       # check, tag v$(cat VERSION), push branch + tag
 ## Task management
 
 `tasks/open-work.md` is the one checkbox file of this repo.
+
+## Rules (always active)
+
+@.claude/rules/shell-scripts.md
+@.claude/rules/markdown-lint.md
