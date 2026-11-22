@@ -10,3 +10,13 @@ compose.override.yml
 *.zip
 *.rpm
 *.tar.gz
+# aitk-managed - do not commit (deployed from ai-toolkit)
+# A project-own file under these paths needs an explicit `git add -f`.
+.claude/skills/
+.claude/rules/
+.claude/commands/
+.claude/agents/
+.claude/worktrees/
+.claude/settings.local.json
+.claude/settings.json
+.github/copilot-instructions.md
