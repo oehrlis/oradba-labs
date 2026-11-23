@@ -55,6 +55,14 @@ All notable changes to this project are documented here. Format based on
   weak/reset cycles filled the pool and `stage.sh unweak` (m4b, `DBMS_JAVA`) failed with ORA-04031; online
   growth is refused with ORA-04033, so it takes effect at the next restart. Set on the running lab 2026-11-16
 
+### Removed
+
+- `tasks/state-2026-11-13.md` (last content `575c8f8`) and `tasks/state-2026-11-23.md` (last content `14141c7`):
+  superseded park states, every open item carried over to `tasks/open-work.md` or done; the current park is
+  `tasks/state-2026-11-23-wait.md`. Read them with `git show <commit>:<path>`
+- `tasks/open-work.md`: completed sections (v0.2.0 mechanics, test session 2026-11-22, audit26 build) - their
+  results are in this CHANGELOG and `docs/architecture.md`
+
 ## [0.2.0] - 2026-11-13
 
 ### Changed
