@@ -74,6 +74,10 @@
     `startPrebuilt.sh` entpackt es in das leere Bind-Verzeichnis, `runOracle.sh` waehlt den Startpfad und
     `setup/` laeuft nie; `runOracle.sh` direkt (compose `command:`) scheitert mit DBT-10508. Getestet auf
     leerem seclab-db26, zurueckgenommen. Kein anderer 23.26.4-Tag ausser `-lite`
+  - Registry-Doku (Repository Detail, Stand 2026-11-23) beschreibt das Gegenteil: "An empty host directory hides
+    the prebuilt database at /opt/oracle/oradata and starts a new database setup" und "Setup scripts ... run when
+    an empty data directory causes a new database setup". Keine Release Notes zu 23.26.4.0, im Image fehlen
+    README.md und Dockerfile (in 23.26.3 vorhanden) - vermutlich fehlerhafter Build (Einschaetzung Stefan)
   - Optionen: Setup-Schritte als idempotente Startup-Hooks auf der Prebuilt-DB (Mechanik-Umbau, Architektur-
     Entscheid 8) - oder bei 23.26.3 bleiben, bis oradba-docker ein eigenes Image baut (labs-M2)
   - Umstellen danach: base26 nach Di 10:00, audit26 nach dem Purge-Test von ora-db-audit-eng (27.11.),
