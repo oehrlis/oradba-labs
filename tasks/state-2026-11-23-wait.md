@@ -2,7 +2,7 @@
 
 Supersedes `state-2026-11-23.md`.
 
-Naechster Schritt: Host-Platte 98 % - `~/oradba-labs-data/audit26` (4.6G) Herkunft klaeren, dann Lab-Images auf oradba-docker umstellen (labs-M2)
+Naechster Schritt: Herkunft von `~/oradba-labs-data/audit26` (4.6G, Platte 98 %) klaeren, dann Lab-Images (labs-M2)
 
 ## Done this session
 
