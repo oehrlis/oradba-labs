@@ -2,7 +2,7 @@
 
 Supersedes `state-2026-11-23.md`.
 
-Naechster Schritt: Host-Platte 98 % - `~/oradba-labs-data/audit26` (4.6G) Herkunft klaeren, dann M2 (Images aus oradba-docker)
+Naechster Schritt: Host-Platte 98 % - `~/oradba-labs-data/audit26` (4.6G) Herkunft klaeren, dann Lab-Images auf oradba-docker umstellen (labs-M2)
 
 ## Done this session
 
@@ -29,7 +29,7 @@ Naechster Schritt: Host-Platte 98 % - `~/oradba-labs-data/audit26` (4.6G) Herkun
 | --- | --- | --- | --- | --- |
 | 1 | Host-Platte 98 % (12 GB frei), `~/oradba-labs-data/audit26` 4.6G Herkunft klaeren | - | Stefan | offen |
 | 2 | base19 LABPDB1 enthaelt `HR` (19c-Template), base26 nicht - gewollt? | - | Stefan | offen |
-| 3 | M2: Images aus oradba-docker, Free-Version pinnen | 2026-11-27 | Session | offen, haengt an M1 |
+| 3 | Lab-Images auf oradba-docker umstellen (labs-M2), Free-Version pinnen | 2026-11-27 | Session | offen, haengt am Aufbau von oradba-docker (labs-M1) |
 <!-- markdownlint-restore -->
 
 ## Open (P1)
@@ -39,7 +39,7 @@ Naechster Schritt: Host-Platte 98 % - `~/oradba-labs-data/audit26` (4.6G) Herkun
 ## Open (P2)
 
 - [ ] Host-Platte 98 %: `~/oradba-labs-data` 41 GB (seclab 26G, audit26 4.6G)
-- [ ] M2: Images aus oradba-docker, Free-Version pinnen
+- [ ] Lab-Images auf oradba-docker umstellen (labs-M2), Free-Version pinnen
 - [ ] Rollen-Abschnitt in hold-my-beer, talks, oradba, ora-db-audit-eng (nach DOAG)
 
 ## To resume
