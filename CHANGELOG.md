@@ -5,7 +5,22 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+### Added
+
+- `make verify` reports the recovery area usage per database and warns from 80 %. Every `make reset`
+  (flashback + RESETLOGS) starts a new incarnation; the archived logs of the old ones stay in the
+  recovery area (no backups, nothing reclaimable). seclab-db19 reached 100 % of its 6400M after nine
+  days and 21 resets and stopped at startup with ORA-19809 / ORA-16038 (2026-11-22)
+
+### Changed
+
+- Demo READMEs `verifier`, `unified-audit`, `tde`: timings of the full rerun on 2026-11-22
+
 ### Fixed
+
+- `demos/tde`: `reset.sql` claimed that `make reset` clears the remaining master key metadata. Tested
+  2026-11-22 on 23.26.3: `V$DATABASE_KEY_INFO.MASTERKEY_ACTIVATED` stays `YES` after the flashback
+  (control file); only `make rebuild LAB=seclab` returns to a database without keys. README updated
 
 - seclab db19: Java pool floor `java_pool_size = 64M` (spfile, new startup hook
   `labs/seclab/startup/db19/05_java_pool.sql`). With the image default (16M under ASMM) repeated privesc

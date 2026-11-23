@@ -4,7 +4,7 @@
 requires: seclab
 databases: db19          # db26 only as read-only contrast (check.sql) or probe, see below
 pdb: DEMOPDB
-verified: yes (2026-11-13, 19.27 / 23.26.3)
+verified: yes (2026-11-13, 19.27 / 23.26.3; rerun 2026-11-22, 19.27)
 ```
 
 hold-my-beer round 1 (warm-up), DOAG AK 2026. Pool entry: `10G-Passwort-Verifier finden und
@@ -61,6 +61,9 @@ switch), and old clients without `O5L_NP` that `12a` locks out.
 
 Measured 2026-11-13 on 19.27 (three runs): `setup.sql` 1 s, `solution.sql` 1 s,
 `check.sql` 1-2 s, `reset.sql` 1 s - the 5 minutes are thinking time, not run time.
+Rerun 2026-11-22 on 19.27 (full sequence, timed per script to the next prompt): `setup.sql` 0.1 s,
+`check.sql` 1.1 s (the ORA-01017 login of `HMB_LEGACY` is the second), `solution.sql` 0.1 s,
+`reset.sql` 0.1 s; `sqlnet.ora` back to `<not set>`, no backup file left.
 
 ## Run
 

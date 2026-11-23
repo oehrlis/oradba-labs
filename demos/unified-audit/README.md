@@ -4,7 +4,7 @@
 requires: seclab
 databases: db19, db26
 pdb: DEMOPDB
-verified: yes (2026-11-13, 19.27 / 23.26.3)
+verified: yes (2026-11-13, 19.27 / 23.26.3; rerun 2026-11-22)
 ```
 
 hold-my-beer round 2 (everyday DBA work), DOAG AK 2026. Pool entry: `Unified Audit Policy fuer
@@ -68,7 +68,10 @@ Measured 2026-11-13 (three runs on 19.27, two on 23.26.3):
 | `reset.sql` | 17 s | 0.2-0.8 s |
 <!-- markdownlint-restore -->
 
-On 19.27 every query on `AUDIT_UNIFIED_POLICIES` takes about 5 s - that is the whole difference.
+On 19.27 every query on `AUDIT_UNIFIED_POLICIES` took about 5 s - that was the whole difference.
+Rerun 2026-11-22 right after `make reset LAB=seclab` (19.27 / 23.26.3): `setup.sql` 3.1 / 0.4 s,
+`check.sql` 0.1-0.3 / 0.3-0.4 s, `solution.sql` 0.9 / 0.2 s, `reset.sql` 4.2 / 0.9 s - the 5 s per
+query did not show up on 19.27 this time (cause not analysed).
 Start `reset.sql` right after the round, not while the next team is waiting.
 
 ## Run

@@ -11,29 +11,35 @@
 - [x] Tests: seclab frisch (dbca 15 min) verify 28 OK, reset 53 s; seclab db26 Image-Wechsel
   Free -> oracle-free-labs:latest auf denselben Daten ok; base26 frisch 143 s, reset 11 s;
   deep-data-Demos auf base26 alle rc=0
-- [-] Demos verifier / unified-audit / tde live pruefen (Agent laeuft), dann Tag `v0.2.0`
+- [x] Demos verifier / unified-audit / tde live pruefen, Tag `v0.2.0` (`9b04ab7`, Tag auf origin)
 
-## Sa 2026-11-14 - Test-Session Stefan (Labs + Demos)
+## So 2026-11-22 - Test-Session (Labs + Demos)
 
-- [ ] `make up LAB=seclab` / `make up LAB=base26`, `make verify`, `make reset` - je einmal [P1] (due: 2026-11-14)
-- [ ] `make rebuild LAB=base26` (frisch, prueft das Setup ohne Legacy-Objekte, ~3 min) [P1] (due: 2026-11-14)
-- [ ] Demos `demos/verifier`, `demos/unified-audit`, `demos/tde` einmal pro Rolle durchspielen [P1] (due: 2026-11-14)
-- [ ] TDE: nach `tde` + `make reset LAB=seclab` pruefen `v$database_key_info.masterkey_activated` = NO
-  in allen Containern (frisches Lab: NO; `MASTERKEYID` ist immer gesetzt, kein Indikator) [P1] (due: 2026-11-14)
+- [x] `make up LAB=seclab` / `make up LAB=base26`, `make verify`, `make reset` - je einmal [P1]
+  - seclab: up blieb haengen, db19 stoppte mit ORA-19809/16038 (FRA 6400M voll, Archivelogs aller
+    Reset-Incarnations); per RMAN die Logs ausserhalb Incarnation 2 (`LAB_BASELINE`) geloescht ->
+    up rc=0, verify 28 OK, reset 61 s / 48 s. base26: up 11 s, verify 8 OK, reset 17 s
+- [x] `make rebuild LAB=base26` - 125 s, verify 8 OK, LABPDB1 nur `PDBADMIN`, keine Legacy-Profile [P1]
+- [x] Demos verifier (db19), unified-audit (db19, db26), tde (db26) je einmal komplett [P1]
+  - alle rc=0, Zeiten in den Demo-READMEs; `reset.sql` hinterlaesst jeweils die Baseline
+- [x] TDE: nach `tde` + `make reset LAB=seclab` bleibt `masterkey_activated` = YES auf db26
+  (CDB$ROOT, LABPDB1, DEMOPDB) - Flashback setzt es nicht zurueck; README + `reset.sql` korrigiert [P1]
+- [x] `base19` einzeln end-to-end: frischer dbca 14.5 min, verify 9 OK, reset 47 s (rebuild ausgelassen) [P2]
 
-## Mo 2026-11-16 abend (M0b) - DOAG Di 2026-11-17
+### Befunde / neu
 
-- [ ] deep-data (08:30): Probe auf base26 mit eigenem `DDS_PWD`, SQLcl-Verbindungen Port 1571;
-  Entscheid base26 oder labdb (Fallback laeuft, Port 1527) [P1] (due: 2026-11-16)
-- [ ] hold-my-beer (15:00): Aufgaben verifier, unified-audit, tde auf seclab proben, Zeiten
-  pruefen (TDE mit zwei Restarts) [P1] (due: 2026-11-16)
-- [ ] privesc: `make up LAB=seclab`, Modul 4 auf seclab-db19 (19.27); State in talks-privesc
-  nachfuehren (19.31 -> 19.27) [P1] (due: 2026-11-16)
+- [ ] FRA-Wachstum durch `make reset`: Mechanik entscheiden (Stefan) - Archivelogs verwaister
+  Incarnations nach dem Flashback loeschen, RMAN-Deletion-Policy, oder FRA-Groesse. `make verify`
+  warnt ab 80 %; seclab-db26 steht bei 62 % von 20G [P1]
+- [ ] Host-Platte 98 % (12 GB frei): `~/oradba-labs-data` 41 GB (seclab 26G, audit26 4.6G - kein Lab
+  hier, Herkunft klaeren) [P2]
+- [ ] base19 LABPDB1 enthaelt `HR` (19c-Template), base26 nicht - gewollt? [P3]
+- [ ] `labctl wait` meldet bei bestehenden Daten "first start creates the databases" und wartet ohne
+  Hinweis auf eine gescheiterte Instanz (unhealthy 10 min) - Abbruch mit Alert-Log-Tail [P2]
 
 ## Next
 
-- [ ] `base19` einzeln end-to-end (Hooks liefen in seclab-db19) [P2]
 - [ ] Rollen-Abschnitt in hold-my-beer, talks, oradba, ora-db-audit-eng (nach DOAG) [P2]
-- [ ] E12 (b) DB-VM mit oci-labs + oradba-ansible (Di/Mi 17./18.11.) [P2]
+- [ ] E12 (b) DB-VM mit oci-labs + oradba-ansible [P2]
 - [ ] `volume` + Podman (M5), Docker-RAM im Alltag zurueck auf 8 GB [P3]
 - [ ] M2: Images aus oradba-docker, Free-Version pinnen [P2]

@@ -4,7 +4,7 @@
 requires: seclab
 databases: db26
 pdb: DEMOPDB
-verified: yes (2026-11-13, 23.26.3 - db26 only, not run on 19.27)
+verified: yes (2026-11-13 and 2026-11-22, 23.26.3 - db26 only, not run on 19.27)
 ```
 
 hold-my-beer round 3 (breaking point), DOAG AK 2026. Pool entry: `TDE-Keystore mit WALLET_ROOT` /
@@ -91,6 +91,9 @@ Fallback for the round: show `check.sql` and the solution steps without the rest
 Measured 2026-11-13 on 23.26.3 (three runs): `setup.sql` 0-3 s, `check.sql` under 1 s,
 `solution.sql` 8-11 s including the restart (after the password prompt), `reset.sql` 5.5-7 s
 including the restart.
+Rerun 2026-11-22 on 23.26.3: `setup.sql` 0.3 s, `check.sql` 0.1 s, `solution.sql` 6.9 s including
+the restart (password typed through a pty, `LAB:` discard of the lost master keys of an earlier
+rehearsal), `reset.sql` 5.0 s including the restart; datafile scan 130 -> 0, 2000 rows readable.
 
 ## Run
 
@@ -133,20 +136,19 @@ Two lab-only workarounds, both `SCOPE = MEMORY`, both printed when used:
 
 `make reset LAB=seclab` (flashback) does **not** revert:
 
-- possibly the activation of the master key in the control file - open, check after a reset:
-  `SELECT con_id, masterkey_activated FROM v$database_key_info` must show `NO` for every container,
-  as on a freshly built lab. Note: `MASTERKEYID` is non-zero on every fresh database too (the internal
-  per-container database key exists without TDE) - it is not an indicator. `solution.sql` handles lost
-  master keys; for a database that has never seen a keystore use `make rebuild LAB=seclab`
+- the activation of the master key in the control file - verified 2026-11-22 on 23.26.3: after
+  `tde` + `reset.sql` + `make reset LAB=seclab`, `SELECT con_id, masterkey_activated FROM
+  v$database_key_info` still shows `YES` for `CDB$ROOT`, `LABPDB1` and `DEMOPDB` (`NO` on a freshly
+  built lab and on db19, which never had a keystore). The control file is not part of the flashback.
+  `MASTERKEYID` is non-zero on every fresh database too (the internal per-container database key
+  exists without TDE) - it is not an indicator. `solution.sql` handles the lost master keys; for a
+  database that has never seen a keystore use `make rebuild LAB=seclab`
 - spfile parameters `WALLET_ROOT` and `TDE_CONFIGURATION` - the spfile is not part of the
   flashback; after a flashback alone the instance still points at the old keystore
 - the keystore files under `WALLET_ROOT` (`ewallet.p12`, `cwallet.sso`, the `WITH BACKUP` copy) -
   files on a persistent mount, they survive `make down` / `make up` too
 - datafiles created after `LAB_BASELINE` are left as orphans on disk - hence the `DROP TABLESPACE
   ... INCLUDING CONTENTS AND DATAFILES` in `reset.sql`
-
-Whether the flashback also removes the master key references was not tested (the lab lifecycle
-is owned elsewhere); `solution.sql` works either way.
 
 No audit policy is created; `ADMINISTER KEY MANAGEMENT` is audited mandatorily and those records
 stay in the trail.

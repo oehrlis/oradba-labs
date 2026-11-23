@@ -5,7 +5,7 @@
 --  Author....: Stefan Oehrli (oes) stefan.oehrli@oradba.ch
 --  Editor....: Stefan Oehrli
 --  Date......: 2026-11-13
---  Revision..: 0.1.0
+--  Revision..: 0.1.1
 --  Purpose...: hold-my-beer round 3 - remove everything setup.sql and
 --              solution.sql created, including what 'make reset' cannot
 --              revert: WALLET_ROOT and TDE_CONFIGURATION in the spfile and the
@@ -32,6 +32,10 @@
 --                keys were set. The key references stay in the database
 --                (V$DATABASE_KEY_INFO) - the next solution.sql run discards them
 --                (lab only), so rehearsals work without 'make reset'.
+--              - verified 2026-11-22 on 23.26.3: 'make reset' does not clear the
+--                key references either - V$DATABASE_KEY_INFO.MASTERKEY_ACTIVATED
+--                stays YES (control file, not part of the flashback). Only
+--                'make rebuild LAB=seclab' returns to a database without keys.
 --  License...: Apache License Version 2.0, January 2004 as shown
 --              at http://www.apache.org/licenses/
 --------------------------------------------------------------------------------
@@ -189,5 +193,5 @@ SELECT con_id, wrl_parameter, status FROM v$encryption_wallet ORDER BY con_id;
 SELECT name AS pdb, open_mode FROM v$pdbs ORDER BY con_id;
 
 UNDEFINE hmb_grp_override wallet_root
-PROMPT - Next: make reset LAB=seclab (flashback, clears the remaining key metadata)
+PROMPT - Master key activation stays in the control file (make reset does not clear it, make rebuild does)
 -- EOF -------------------------------------------------------------------------

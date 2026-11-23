@@ -5,17 +5,19 @@
 # Name.......: lab_verify.sh
 # Author.....: Stefan Oehrli (oes) stefan.oehrli@oradba.ch
 # Editor.....: Stefan Oehrli
-# Date.......: 2026-11-13
-# Version....: 0.2.0
+# Date.......: 2026-11-22
+# Version....: 0.2.1
 # Purpose....: Verify a running lab: container health, database state, Unified
-#              Auditing, restore point, listener connection per PDB, expected
-#              lab accounts - and print the connect strings.
+#              Auditing, restore point, recovery area usage (WARN from 80 %),
+#              listener connection per PDB, expected lab accounts - and print
+#              the connect strings.
 # Notes......: - Called by labs/<name>/verify.sh. Reads everything from the
 #                running containers (docker port, v$instance, v$pdbs).
 #              - The connection test logs in as SYSTEM through the listener
 #                inside the container; the password comes from the container
 #                environment via stdin, it never reaches argv.
-#              - Exit 0 all checks passed, 1 at least one check failed.
+#              - Exit 0 all checks passed, 1 at least one check failed. A WARN
+#                does not fail the run.
 # Reference..: https://github.com/oehrlis/oradba-labs
 # License....: Apache License Version 2.0, January 2004 as shown
 #              at http://www.apache.org/licenses/
@@ -48,6 +50,7 @@ EOF
 lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
 
 ok() { echo "  OK    $*"; }
+warn() { echo "  WARN  $*" >&2; }
 fail() {
     echo "  FAIL  $*" >&2
     FAILED=1
@@ -112,6 +115,16 @@ verify_container() {
     if [[ "${val}" == "TRUE" ]]; then ok "Unified Auditing pure mode"; else fail "Unified Auditing: ${val}"; fi
     val=$(q "${c}" "SELECT COUNT(*) FROM v\$restore_point WHERE name = 'LAB_BASELINE' AND guarantee_flashback_database = 'YES'")
     if [[ "${val}" == "1" ]]; then ok "restore point LAB_BASELINE (make reset)"; else fail "restore point LAB_BASELINE missing"; fi
+    # archived logs of every reset incarnation stay in the recovery area (no backups,
+    # nothing reclaimable); at 100 % the instance stops with ORA-16038 at the next start
+    val=$(q "${c}" "SELECT ROUND(SUM(percent_space_used - percent_space_reclaimable)) FROM v\$recovery_area_usage")
+    if [[ ! "${val:-0}" =~ ^[0-9]+$ ]]; then
+        warn "recovery area usage not readable: ${val}"
+    elif ((${val:-0} < 80)); then
+        ok "recovery area ${val:-0} % used"
+    else
+        warn "recovery area ${val} % used - archived logs of earlier incarnations fill it (ORA-19809 at 100 %)"
+    fi
     if [[ -n "${port}" ]] && nc -z 127.0.0.1 "${port}" 2>/dev/null; then
         ok "listener reachable on 127.0.0.1:${port}"
     else
