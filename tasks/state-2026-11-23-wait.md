@@ -2,7 +2,7 @@
 
 Supersedes `state-2026-11-23.md`.
 
-Naechster Schritt: Entscheid 26ai-Image (Free 23.26.4.0 ohne dbca-Template), danach base26 rebuild ab Di 10:00
+Naechster Schritt: Di nach UKOUG S4 (ab 10:00): base26 rebuild + verify SCOTT/TVD_HR, dann Entscheid 26ai-Image
 
 ## Done this session
 
@@ -22,6 +22,8 @@ Naechster Schritt: Entscheid 26ai-Image (Free 23.26.4.0 ohne dbca-Template), dan
   23.26.4 auf 23.26.3-Daten; Dictionary geprueft (VALID, kein datapatch), echte `lab.env` aus dem Worktree
   kopiert, Lesson in `tasks/lessons.md`
 - Task "Mechanik v0.2.0" in `areas/oci-labs.md` abgehakt; Docker-RAM bleibt 16 GB
+- `tasks/` konsolidiert (`96869bb`): open-work nur offene Tasks, lessons repo-spezifisch, State-Dateien
+  2026-11-13 / 2026-11-23 per `git rm` (CHANGELOG Removed); Worktree `oradba-labs-audit26` entfernt (Stefan)
 - PKM: Tasks Chris Saxon (UKOUG, due 2026-11-25) und Mail an Gerald Venzl / Martin Bach (due 2026-11-27),
   Entwurf `~/notes/prompts/free-23-26-4-image.md`
 
@@ -52,6 +54,6 @@ Naechster Schritt: Entscheid 26ai-Image (Free 23.26.4.0 ohne dbca-Template), dan
 
 ```bash
 cd ~/Repos/own/oehrlis/oradba-labs
-sed -n '/26ai-Labs auf Free 23.26.4/,/seclab neu erstellen/p' tasks/open-work.md
+sed -n '/^## Jetzt/,/^## audit26/p' tasks/open-work.md
 docker ps --format '{{.Names}} {{.Status}}'
 ```
