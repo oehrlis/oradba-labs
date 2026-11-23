@@ -40,3 +40,17 @@ sichtbarem `--stat`. `main` war halb umgebaut, korrigiert mit `5b58d79` (Revert 
 als erwartet, ist ein Stopp, kein Hinweis.
 
 verify: `git diff --cached --name-only` vor jedem Commit = genau die gemeinten Pfade
+
+## 2026-11-23 - `make up` auf einem fremden Lab erzeugte eine neue lab.env
+
+**Was passiert ist:** Fuer einen Starttest von audit26 lief `make up LAB=audit26` im Haupt-Checkout. Die
+`lab.env` des Labs lag nur im Worktree der ora-db-audit-eng-Session. `ensure_env` legte eine neue aus der
+gerade umgestellten Vorlage an: anderes Image (23.26.4 auf 23.26.3-Daten) und neue Passwoerter. Die
+INFO-Zeile dazu stand in der Ausgabe, ich habe sie per `tail` abgeschnitten. Folge: ein Start unter den
+falschen Binaries, kein datapatch, Dictionary unveraendert (geprueft), lab.env aus dem Worktree kopiert.
+
+**Regel:** Vor `make up` auf einem Lab, das eine andere Session nutzt: `ls labs/<lab>/lab.env` im eigenen
+Checkout. Fehlt sie, erst beim Besitzer nachfragen - nie die Vorlage erzeugen lassen. Ausgaben von
+`make up` nicht vor der ersten INFO-Zeile abschneiden.
+
+verify: vor jedem `make up` eines fremden Labs existiert `labs/<lab>/lab.env` im aktuellen Checkout

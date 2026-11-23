@@ -68,6 +68,17 @@
 - [ ] Rollen-Abschnitt in hold-my-beer, talks, oradba, ora-db-audit-eng (nach DOAG) [P2]
 - [ ] Datenbank-VM auf OCI mit oci-labs + oradba-ansible (Architektur-Entscheid 12, Variante b) [P2]
 - [ ] Docker named volumes + Podman (labs-M5) [P3]
+- [ ] 26ai-Labs auf Free 23.26.4 - Entscheid offen (Stefan) [P1]
+  - 2026-11-23: `container-registry.oracle.com/database/free:23.26.4.0` (= `latest`, 5.9 GB) bringt kein
+    dbca-Template mehr (`FREE_Database.dbc` fehlt, 23.26.3.0 hat es), nur `prebuilt-oradata.tar.gz`.
+    `startPrebuilt.sh` entpackt es in das leere Bind-Verzeichnis, `runOracle.sh` waehlt den Startpfad und
+    `setup/` laeuft nie; `runOracle.sh` direkt (compose `command:`) scheitert mit DBT-10508. Getestet auf
+    leerem seclab-db26, zurueckgenommen. Kein anderer 23.26.4-Tag ausser `-lite`
+  - Optionen: Setup-Schritte als idempotente Startup-Hooks auf der Prebuilt-DB (Mechanik-Umbau, Architektur-
+    Entscheid 8) - oder bei 23.26.3 bleiben, bis oradba-docker ein eigenes Image baut (labs-M2)
+  - Umstellen danach: base26 nach Di 10:00, audit26 nach dem Purge-Test von ora-db-audit-eng (27.11.),
+    seclab beim Neuaufbau; 19c bleibt `trivadis/ora_db`
+- [ ] seclab neu erstellen (`make up LAB=seclab`) - am 2026-11-23 samt Daten geloescht (Entscheid Stefan) [P2]
 - [ ] Lab-Images auf oradba-docker umstellen, Free-Version pinnen (labs-M2) [P2]
   - 2026-11-23: das Repo `oradba-docker` gibt es noch nicht (labs-M1 offen). Entscheid Stefan: vorerst bleiben
     `trivadis/ora_db` und `oracle-free-labs`; die alten aehnlichen Image-Repos werden spaeter abgeloest oder
