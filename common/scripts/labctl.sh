@@ -5,8 +5,8 @@
 # Name.......: labctl.sh
 # Author.....: Stefan Oehrli (oes) stefan.oehrli@oradba.ch
 # Editor.....: Stefan Oehrli
-# Date.......: 2026-11-13
-# Version....: 0.2.0
+# Date.......: 2026-11-23
+# Version....: 0.2.1
 # Purpose....: Lab lifecycle behind the Makefile: list, up, down, reset,
 #              rebuild, status, connect, verify for labs/<name>.
 # Notes......: - Thin wrapper around docker compose (podman later, COMPOSE=).
@@ -16,7 +16,9 @@
 #                (volume: not supported yet, M5). Sets the DB*_DATA variables
 #                used in compose.yml.
 #              - reset = FLASHBACK DATABASE to LAB_BASELINE (created by the
-#                startup hook 90_lab_baseline.sh); rebuild = data gone, new.
+#                startup hook 90_lab_baseline.sh), then RMAN deletes the
+#                archived logs of orphaned incarnations; rebuild = data gone,
+#                new.
 #              - Passwords never go to argv: sqlplus reads them from stdin.
 # Reference..: https://github.com/oehrlis/oradba-labs
 # License....: Apache License Version 2.0, January 2004 as shown
@@ -25,6 +27,7 @@
 # CHANGE LOG:
 # 2026-11-13  oes  Initial release                                    0.1.0
 # 2026-11-13  oes  Mechanics per E8-E11: no own setup layer, storage  0.2.0
+# 2026-11-23  oes  reset deletes archived logs of orphan incarnations 0.2.1
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
@@ -278,6 +281,47 @@ FLASHBACK DATABASE TO RESTORE POINT ${RESTORE_POINT};
 ALTER DATABASE OPEN RESETLOGS;
 ALTER PLUGGABLE DATABASE ALL OPEN;
 EOF
+    purge_orphan_archivelogs "${c}"
+}
+
+# ------------------------------------------------------------------------------
+# Function: purge_orphan_archivelogs
+# Purpose.: Delete the archived logs of every incarnation except the one of
+#           LAB_BASELINE and the current one. Each reset opens a new incarnation;
+#           without backups none of the old logs is reclaimable, so the recovery
+#           area fills up (ORA-19809 / ORA-16038 at the next start). A flashback
+#           to LAB_BASELINE needs only the logs of its own incarnation.
+#           A failure is a WARN - the reset itself worked.
+# ------------------------------------------------------------------------------
+purge_orphan_archivelogs() {
+    local c="$1" cmds n
+    # shellcheck disable=SC2016  # v$ views are SQL, not shell variables
+    cmds=$(sql_sysdba "${c}" <<EOF
+SET HEADING OFF FEEDBACK OFF PAGESIZE 0 LINESIZE 500 TRIMSPOOL ON
+SELECT 'DELETE NOPROMPT ARCHIVELOG ''' || a.name || ''';'
+  FROM v\$archived_log a
+  JOIN v\$database_incarnation i ON i.resetlogs_id = a.resetlogs_id
+ WHERE a.deleted = 'NO' AND a.name IS NOT NULL
+   AND i.status <> 'CURRENT'
+   AND i.incarnation# NOT IN (SELECT database_incarnation# FROM v\$restore_point
+                               WHERE name = '${RESTORE_POINT}');
+EOF
+    ) || {
+        log_warn "${c}: archived logs of old incarnations not listed - recovery area not purged"
+        return 0
+    }
+    n=$(grep -c '^DELETE NOPROMPT' <<<"${cmds}" || true)
+    if ((n == 0)); then
+        log_info "${c}: no archived logs of old incarnations"
+        return 0
+    fi
+    # shellcheck disable=SC2016  # expands inside the container
+    if grep '^DELETE NOPROMPT' <<<"${cmds}" |
+        ${COMPOSE} exec -i "${c}" bash -c 'export ORAENV_ASK=NO; "${ORACLE_HOME}/bin/rman" target / >/dev/null'; then
+        log_info "${c}: deleted ${n} archived logs of old incarnations (recovery area)"
+    else
+        log_warn "${c}: RMAN delete of ${n} archived logs of old incarnations failed - check v\$recovery_area_usage"
+    fi
 }
 
 # ------------------------------------------------------------------------------

@@ -28,9 +28,9 @@
 
 ### Befunde / neu
 
-- [ ] FRA-Wachstum durch `make reset`: Mechanik entscheiden (Stefan) - Archivelogs verwaister
-  Incarnations nach dem Flashback loeschen, RMAN-Deletion-Policy, oder FRA-Groesse. `make verify`
-  warnt ab 80 %; seclab-db26 steht bei 62 % von 20G [P1]
+- [x] FRA-Wachstum durch `make reset`: Entscheid Stefan 2026-11-23 - `labctl reset` loescht per RMAN die
+  Archivelogs verwaister Incarnations (Baseline- und aktuelle Incarnation bleiben); zwei Resets in Folge ok,
+  `make verify` warnt ab 80 % [P1]
 - [ ] Host-Platte 98 % (12 GB frei): `~/oradba-labs-data` 41 GB (seclab 26G, audit26 4.6G - kein Lab
   hier, Herkunft klaeren) [P2]
 - [ ] base19 LABPDB1 enthaelt `HR` (19c-Template), base26 nicht - gewollt? [P3]

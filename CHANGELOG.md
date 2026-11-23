@@ -7,6 +7,9 @@ All notable changes to this project are documented here. Format based on
 
 ### Added
 
+- `make reset` deletes the archived logs of every orphaned incarnation after the flashback (RMAN),
+  keeping those of the `LAB_BASELINE` incarnation and the current one. Tested 2026-11-23 with two resets
+  in a row on seclab (db19 54 % -> 36 %, db26 65 % -> 18 %) and on base19; the second flashback works
 - `make verify` reports the recovery area usage per database and warns from 80 %. Every `make reset`
   (flashback + RESETLOGS) starts a new incarnation; the archived logs of the old ones stay in the
   recovery area (no backups, nothing reclaimable). seclab-db19 reached 100 % of its 6400M after nine
