@@ -66,7 +66,8 @@ oradba-labs/
   `nocopy` the Free image's prebuilt database is copied in and the setup hooks are skipped -
   planned with Podman / cloud hosts (M5).
 - **Baseline and reset:** the last startup hook creates the guaranteed restore point
-  `LAB_BASELINE` once. `make up` waits for healthy + baseline. `make reset` flashes every database
+  `LAB_BASELINE` once. `make up` waits for healthy + baseline and aborts with the alert log tail when a
+  start on existing data fails (not healthy after `START_TIMEOUT`, 300 s). `make reset` flashes every database
   of the lab back to it in parallel; `make rebuild` starts from empty data.
 - Ports are bound to `127.0.0.1` only and never 1521 - each lab has its own ports in `lab.env`.
 - Standard PDB `LABPDB1` with the core configuration of `labdb` (audit, profiles, `db_domain`);

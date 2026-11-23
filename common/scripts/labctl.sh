@@ -6,7 +6,7 @@
 # Author.....: Stefan Oehrli (oes) stefan.oehrli@oradba.ch
 # Editor.....: Stefan Oehrli
 # Date.......: 2026-11-23
-# Version....: 0.2.1
+# Version....: 0.2.2
 # Purpose....: Lab lifecycle behind the Makefile: list, up, down, reset,
 #              rebuild, status, connect, verify for labs/<name>.
 # Notes......: - Thin wrapper around docker compose (podman later, COMPOSE=).
@@ -19,6 +19,10 @@
 #                startup hook 90_lab_baseline.sh), then RMAN deletes the
 #                archived logs of orphaned incarnations; rebuild = data gone,
 #                new.
+#              - wait_ready aborts on a failed start: the image reports
+#                'WAS NOT SUCCESSFUL', or existing data is not healthy after
+#                START_TIMEOUT. A first start (image creates the database,
+#                unhealthy during 19c dbca) waits up to READY_TIMEOUT.
 #              - Passwords never go to argv: sqlplus reads them from stdin.
 # Reference..: https://github.com/oehrlis/oradba-labs
 # License....: Apache License Version 2.0, January 2004 as shown
@@ -28,6 +32,7 @@
 # 2026-11-13  oes  Initial release                                    0.1.0
 # 2026-11-13  oes  Mechanics per E8-E11: no own setup layer, storage  0.2.0
 # 2026-11-23  oes  reset deletes archived logs of orphan incarnations 0.2.1
+# 2026-11-23  oes  wait_ready: start vs create, abort with alert log 0.2.2
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
@@ -40,10 +45,21 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 LABS_DIR="${REPO_ROOT}/labs"
 VERSION="0.2.0"
 DRY_RUN=${DRY_RUN:-"FALSE"}
+case "${DRY_RUN}" in
+    [Tt][Rr][Uu][Ee] | 1 | [Yy][Ee][Ss]) DRY_RUN="TRUE" ;;
+    [Ff][Aa][Ll][Ss][Ee] | 0 | [Nn][Oo] | "") DRY_RUN="FALSE" ;;
+    *)
+        echo "ERROR: DRY_RUN=${DRY_RUN} - use TRUE|1|yes or FALSE|0|no" >&2
+        exit 1
+        ;;
+esac
 PURGE=${PURGE:-"0"}
 COMPOSE=${COMPOSE:-"docker"}
 RESTORE_POINT="LAB_BASELINE"
 READY_TIMEOUT=${READY_TIMEOUT:-3600} # first 19c start runs dbca
+# existing data: a start is healthy after 11-61 s; 300 s = image StartPeriod
+START_TIMEOUT=${START_TIMEOUT:-300}
+CREATING="" # services whose image creates the database (set by cmd_up)
 
 log_info() { echo "$(date '+%Y-%m-%d %H:%M:%S') INFO  $*"; }
 log_warn() { echo "$(date '+%Y-%m-%d %H:%M:%S') WARN  $*" >&2; }
@@ -77,6 +93,7 @@ Options:
 
 Environment:
   COMPOSE=docker (podman: second priority, untested), PURGE=1, DRY_RUN=TRUE
+  READY_TIMEOUT=${READY_TIMEOUT} (first start), START_TIMEOUT=${START_TIMEOUT} (existing data)
 
 EOF
 }
@@ -225,16 +242,92 @@ has_baseline() {
 }
 
 # ------------------------------------------------------------------------------
+# Function: data_exists
+# Purpose.: Does the bind directory of a service hold a database? Same test as
+#           the image uses to choose between start and create:
+#           ora_db: oradata/<SID>/, Free/Oracle images: oradata/.<SID>.created
+# ------------------------------------------------------------------------------
+data_exists() {
+    case "$1" in
+        db19) compgen -G "${DB19_DATA}/oradata/*/" >/dev/null ;;
+        db26) compgen -G "${DB26_ORADATA}/.*.created" >/dev/null ;;
+        *)
+            log_warn "no data check for service $1 - treated as first start (waits up to ${READY_TIMEOUT}s)"
+            return 1
+            ;;
+    esac
+}
+
+# ------------------------------------------------------------------------------
+# Function: classify_services
+# Purpose.: Before 'compose up': name per service whether the image starts
+#           existing data or creates the database; sets CREATING
+# ------------------------------------------------------------------------------
+classify_services() {
+    local lab="$1" svc
+    CREATING=""
+    for svc in $(compose "${lab}" config --services); do
+        # 'make up' again during dbca: oradata/<SID>/ exists already, the database does not
+        if ${COMPOSE} exec "${lab}-${svc}" pgrep -f dbca >/dev/null 2>&1; then
+            CREATING+=" ${svc}"
+            log_info "${lab}-${svc}: dbca running - the image is still creating the database"
+        elif data_exists "${svc}"; then
+            log_info "${lab}-${svc}: existing data - starting the database (abort if not healthy after ${START_TIMEOUT}s)"
+        else
+            CREATING+=" ${svc}"
+            log_info "${lab}-${svc}: empty data directory - the image creates the database (19c dbca about 15 min, Free about 2-3 min)"
+        fi
+    done
+}
+
+# ------------------------------------------------------------------------------
+# Function: alert_tail
+# Purpose.: Last 20 lines of the alert log, read in the container (the image
+#           tails it to the container log only once its start script is done -
+#           a start hanging in OPEN never gets there); fallback: container log
+# ------------------------------------------------------------------------------
+alert_tail() {
+    local c="$1"
+    # shellcheck disable=SC2016  # expands inside the container
+    ${COMPOSE} exec "${c}" bash -c 'b=$("${ORACLE_HOME}/bin/orabase"); f=$(ls -t "${b}"/diag/rdbms/*/*/trace/alert_*.log 2>/dev/null | head -1); [ -n "${f}" ] || exit 1; echo "--- ${f}"; tail -n 20 "${f}"' 2>/dev/null ||
+        {
+            echo "--- no alert log readable, container log:"
+            ${COMPOSE} logs --tail 20 "${c}" 2>&1 || true
+        }
+}
+
+# ------------------------------------------------------------------------------
+# Function: start_failed
+# Purpose.: Report a failed start: reason, alert log tail, where to look next
+# ------------------------------------------------------------------------------
+start_failed() {
+    local lab="$1" c="$2" reason="$3"
+    log_error "${c}: ${reason} - last lines of the alert log:"
+    alert_tail "${c}" >&2
+    log_error "${c}: ORA-19809 / ORA-16038 in it = recovery area full - 'make verify LAB=${lab}' shows its usage" \
+        "(database open), else 'make connect LAB=${lab} DB=${c#"${lab}"-}': STARTUP MOUNT (if down)," \
+        "SELECT * FROM v\$recovery_area_usage;"
+}
+
+# ------------------------------------------------------------------------------
 # Function: wait_ready
 # Purpose.: Wait until every container is healthy (image healthcheck) and has
-#           its LAB_BASELINE (last startup hook - setup and startup are done)
+#           its LAB_BASELINE (last startup hook - setup and startup are done).
+#           Aborts when a container stops, when the image reports a failed
+#           setup ('WAS NOT SUCCESSFUL', both images), and - for existing data
+#           only - when it is unhealthy or not healthy after START_TIMEOUT.
+#           A database being created is unhealthy during 19c dbca (StartPeriod
+#           300 s, 3 x 60 s checks): only READY_TIMEOUT applies there.
 # ------------------------------------------------------------------------------
 wait_ready() {
-    local lab="$1" c state health waited=0 pending
+    local lab="$1" c svc state health started log waited=0 pending mode
     [[ "${DRY_RUN}" == "TRUE" ]] && return 0
     while true; do
         pending=""
         for c in $(containers "${lab}"); do
+            svc="${c#"${lab}"-}"
+            mode="existing data"
+            [[ " ${CREATING} " == *" ${svc} "* ]] && mode="creating database"
             state=$(${COMPOSE} inspect --format '{{.State.Status}}' "${c}")
             if [[ "${state}" != "running" ]]; then
                 log_error "${c} is ${state} - last log lines:"
@@ -242,11 +335,27 @@ wait_ready() {
                 return 1
             fi
             health=$(${COMPOSE} inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "${c}")
-            if [[ "${health}" != "healthy" ]]; then
-                pending+=" ${c}(${health:-no healthcheck})"
-            elif ! has_baseline "${c}"; then
-                pending+=" ${c}(no ${RESTORE_POINT} yet)"
+            if [[ "${health}" == "healthy" ]]; then
+                has_baseline "${c}" || pending+=" ${c}(no ${RESTORE_POINT} yet)"
+                continue
             fi
+            started=$(${COMPOSE} inspect --format '{{.State.StartedAt}}' "${c}")
+            log=$(${COMPOSE} logs --since "${started}" "${c}" 2>&1 || true)
+            if [[ "${log}" == *"WAS NOT SUCCESSFUL"* ]]; then
+                start_failed "${lab}" "${c}" "the image reports: database setup was not successful"
+                return 1
+            fi
+            if [[ "${mode}" == "existing data" ]]; then
+                if [[ "${health}" == "unhealthy" ]]; then
+                    start_failed "${lab}" "${c}" "unhealthy with existing data (${waited}s)"
+                    return 1
+                fi
+                if ((waited >= START_TIMEOUT)); then
+                    start_failed "${lab}" "${c}" "not healthy ${waited}s after start with existing data (START_TIMEOUT=${START_TIMEOUT})"
+                    return 1
+                fi
+            fi
+            pending+=" ${c}(${health:-no healthcheck}, ${mode})"
         done
         [[ -z "${pending}" ]] && return 0
         if ((waited >= READY_TIMEOUT)); then
@@ -254,7 +363,7 @@ wait_ready() {
             return 1
         fi
         if ((waited % 60 == 0)); then
-            log_info "waiting for${pending} (${waited}s; first start creates the databases)"
+            log_info "waiting for${pending} (${waited}s)"
         fi
         sleep 10
         waited=$((waited + 10))
@@ -357,6 +466,7 @@ cmd_up() {
     local lab="$1"
     ensure_env "${lab}"
     storage_env "${lab}"
+    classify_services "${lab}"
     log_info "starting lab ${lab}"
     run compose "${lab}" up -d
     log_info "storage: ${LAB_STORAGE} (${LAB_DATA_DIR})"

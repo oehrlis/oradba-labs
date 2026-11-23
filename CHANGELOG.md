@@ -14,12 +14,29 @@ All notable changes to this project are documented here. Format based on
   (flashback + RESETLOGS) starts a new incarnation; the archived logs of the old ones stay in the
   recovery area (no backups, nothing reclaimable). seclab-db19 reached 100 % of its 6400M after nine
   days and 21 resets and stopped at startup with ORA-19809 / ORA-16038 (2026-11-22)
+- `make up` names per database whether the image starts existing data or creates the database
+  (same test as the image: `oradata/<SID>/` for `trivadis/ora_db`, `oradata/.<SID>.created` for Free;
+  a running dbca - `make up` again during the first start - counts as creating)
 
 ### Changed
+
+- `make up` / `make reset` abort on a failed start instead of waiting up to `READY_TIMEOUT` (3600 s):
+  with the container name, the last 20 lines of the alert log (read in the container - the image tails
+  it to `docker logs` only once its start script is done) and a pointer to `make verify` /
+  `v$recovery_area_usage`. Abort when the image reports `WAS NOT SUCCESSFUL` (both images, also a failed
+  dbca), and for existing data when the container is `unhealthy` or not healthy after `START_TIMEOUT`
+  (default 300 s = image StartPeriod; a start takes 11-61 s). A database being created waits up to
+  `READY_TIMEOUT`: during the 19c dbca (about 15 min) the container is `unhealthy` from about 8 min
+  (StartPeriod 300 s, 3 x 60 s checks). Tested 2026-11-23 on base26 with a provoked ORA-16038 (recovery
+  area below its usage, archiver stuck, container killed): abort after 11 s with ORA-16038 / ORA-19809
+  in the tail
 
 - Demo READMEs `verifier`, `unified-audit`, `tde`: timings of the full rerun on 2026-11-22
 
 ### Fixed
+
+- `labctl.sh`: `DRY_RUN` accepted only `TRUE`; any other spelling (`DRY_RUN=1` called directly) ran
+  live. Now `TRUE|1|yes` / `FALSE|0|no` (case-insensitive), anything else is an error
 
 - `demos/tde`: `reset.sql` claimed that `make reset` clears the remaining master key metadata. Tested
   2026-11-22 on 23.26.3: `V$DATABASE_KEY_INFO.MASTERKEY_ACTIVATED` stays `YES` after the flashback

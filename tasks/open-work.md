@@ -34,12 +34,17 @@
 - [ ] Host-Platte 98 % (12 GB frei): `~/oradba-labs-data` 41 GB (seclab 26G, audit26 4.6G - kein Lab
   hier, Herkunft klaeren) [P2]
 - [ ] base19 LABPDB1 enthaelt `HR` (19c-Template), base26 nicht - gewollt? [P3]
-- [ ] `labctl wait` meldet bei bestehenden Daten "first start creates the databases" und wartet ohne
+- [x] `labctl wait` meldet bei bestehenden Daten "first start creates the databases" und wartet ohne
   Hinweis auf eine gescheiterte Instanz (unhealthy 10 min) - Abbruch mit Alert-Log-Tail [P2]
+  - 2026-11-23: Start vs. Erstellung je DB benannt; Abbruch bei `WAS NOT SUCCESSFUL` oder (nur
+    vorhandene Daten) unhealthy / nicht healthy nach `START_TIMEOUT` 300 s (Entscheid Stefan). base26
+    mit provoziertem ORA-16038: Abbruch nach 11 s mit Alert-Log-Tail; rebuild 134 s, reset 10 s
+- [ ] Archiver-Stillstand im Betrieb bleibt healthy: der Healthcheck liest nur `v$database.open_mode`,
+  eine suspendierte Instanz meldet READ WRITE - nur `make verify` (FRA-WARN) zeigt es [P3]
 
 ## Next
 
 - [ ] Rollen-Abschnitt in hold-my-beer, talks, oradba, ora-db-audit-eng (nach DOAG) [P2]
 - [ ] E12 (b) DB-VM mit oci-labs + oradba-ansible [P2]
-- [ ] `volume` + Podman (M5), Docker-RAM im Alltag zurueck auf 8 GB [P3]
+- [ ] `volume` + Podman (M5) [P3]
 - [ ] M2: Images aus oradba-docker, Free-Version pinnen [P2]
