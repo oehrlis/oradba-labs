@@ -31,9 +31,15 @@
 - [x] FRA-Wachstum durch `make reset`: Entscheid Stefan 2026-11-23 - `labctl reset` loescht per RMAN die
   Archivelogs verwaister Incarnations (Baseline- und aktuelle Incarnation bleiben); zwei Resets in Folge ok,
   `make verify` warnt ab 80 % [P1]
-- [ ] Host-Platte 98 % (12 GB frei): `~/oradba-labs-data` 41 GB (seclab 26G, audit26 4.6G - kein Lab
-  hier, Herkunft klaeren) [P2]
-- [ ] base19 LABPDB1 enthaelt `HR` (19c-Template), base26 nicht - gewollt? [P3]
+- [ ] Host-Platte 97 % (17 GB frei): `~/oradba-labs-data` 41 GB (seclab 26G, audit26 4.6G) [P2]
+  - 2026-11-23: audit26 = Daten des Labs `labs/audit26` (PR #1 gemergt), ora-db-audit-eng braucht sie fuer
+    den Purge-Test (due 2026-11-27) - nicht loeschen
+- [x] base19 LABPDB1 enthaelt `HR` (19c-Template), base26 nicht - gewollt? [P3]
+  - Entscheid Stefan 2026-11-23: HR und SCOTT gehoeren in die Base-Labs. Neue Hooks `16_create_scott_labpdb1.sql`,
+    `17_create_tvd_hr_labpdb1.sql` (Common-Skripte wie audit26) in base19 und base26; base19 behaelt dazu das
+    Template-`HR`
+- [ ] base26 nach der MFA-Demo (belegt bis Di 2026-11-24 10:00) neu erstellen (`make rebuild LAB=base26`) und in
+  `labs/base26/verify.sh` `LABPDB1:SCOTT,TVD_HR` erwarten - vorher meldet verify FAIL [P2] (due: 2026-11-25)
 - [x] `labctl wait` meldet bei bestehenden Daten "first start creates the databases" und wartet ohne
   Hinweis auf eine gescheiterte Instanz (unhealthy 10 min) - Abbruch mit Alert-Log-Tail [P2]
   - 2026-11-23: Start vs. Erstellung je DB benannt; Abbruch bei `WAS NOT SUCCESSFUL` oder (nur
@@ -60,6 +66,9 @@
 ## Next
 
 - [ ] Rollen-Abschnitt in hold-my-beer, talks, oradba, ora-db-audit-eng (nach DOAG) [P2]
-- [ ] E12 (b) DB-VM mit oci-labs + oradba-ansible [P2]
-- [ ] `volume` + Podman (M5) [P3]
-- [ ] M2: Images aus oradba-docker, Free-Version pinnen [P2]
+- [ ] Datenbank-VM auf OCI mit oci-labs + oradba-ansible (Architektur-Entscheid 12, Variante b) [P2]
+- [ ] Docker named volumes + Podman (labs-M5) [P3]
+- [ ] Lab-Images auf oradba-docker umstellen, Free-Version pinnen (labs-M2) [P2]
+  - 2026-11-23: das Repo `oradba-docker` gibt es noch nicht (labs-M1 offen). Entscheid Stefan: vorerst bleiben
+    `trivadis/ora_db` und `oracle-free-labs`; die alten aehnlichen Image-Repos werden spaeter abgeloest oder
+    ueberfuehrt

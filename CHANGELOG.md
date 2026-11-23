@@ -21,6 +21,10 @@ All notable changes to this project are documented here. Format based on
   `SCOTT`, `TVD_HR`, `LAB_ADMIN`, `LAB_USER` and no lab-owned audit policies - demos bring their own and measure
   from a start timestamp. Database part of the M3 migration of `ora-db-audit-eng/lab`, pulled forward; the
   application simulator and the remaining setup steps stay in M3
+- `base19` / `base26`: sample schemas `SCOTT` and `TVD_HR` in `LABPDB1` (setup hooks `16_create_scott_labpdb1.sql`,
+  `17_create_tvd_hr_labpdb1.sql`, common scripts as in `audit26`); `base19` keeps the 19c template `HR`. Only a
+  new database gets them - `make rebuild LAB=<lab>`. Tested 2026-11-23: base19 rebuild (dbca about 15 min), verify
+  with `SCOTT`, `TVD_HR`, `HR` OK; base26 follows after the MFA demo (verify expects them only then)
 
 ### Changed
 
