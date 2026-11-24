@@ -5,6 +5,8 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-24
+
 ### Added
 
 - Lab `dv26` and demo `database-vault`: throwaway Database Vault test lab (26ai Free, CDB `FREE` + `DVPDB1`, port
