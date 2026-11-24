@@ -5,6 +5,13 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+### Added
+
+- Lab `forensics`: throwaway lab for Oracle forensics and data-recovery recipes (delphi-oradba
+  `topics/forensics/recipes/`) on top of `base26` (26ai Free 23.26.3, CDB `FREE` + `FXPDB1`, port 1576),
+  archivelog, minimal supplemental logging, small tablespace `FX_DATA`. May be destroyed and rebuilt at will;
+  ships no scenario data - recipes create their evidence at runtime
+
 ## [0.3.0] - 2026-11-24
 
 ### Added
