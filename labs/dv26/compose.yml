@@ -1,0 +1,43 @@
+# ------------------------------------------------------------------------------
+# oradba-labs - dv26: Oracle AI Database 26ai Free, CDB FREE + DVPDB1
+# Database Vault test lab on top of base26: same image and core configuration,
+# PDB DVPDB1 and the common DV accounts, Database Vault NOT configured
+# (demos/database-vault does that - LAB_BASELINE is the state before DV).
+# Contract: Oracle container pattern (E8). Storage: LAB_STORAGE=bind|volume (E9),
+# the DB*_DATA / DB*_ORADATA variables are set by common/scripts/labctl.sh.
+# Image, version, ports and passwords: lab.env (copy of lab.env.example)
+# ------------------------------------------------------------------------------
+name: oradba-labs-dv26
+
+services:
+  db26:
+    image: ${DB26_IMAGE}:${DB26_VERSION}
+    container_name: dv26-db26
+    hostname: dv26-db26
+    restart: "no"
+    environment:
+      ORACLE_PWD: ${ORACLE_PWD}
+      ENABLE_ARCHIVELOG: "true"
+      TZ: ${TZ}
+      LAB_ADMIN_PWD: ${LAB_ADMIN_PWD}
+      LAB_USER_PWD: ${LAB_USER_PWD}
+      DV_OWNER_PWD: ${DV_OWNER_PWD}
+      DV_ACCTMGR_PWD: ${DV_ACCTMGR_PWD}
+    volumes:
+      - ${DB26_ORADATA}:/opt/oracle/oradata${LAB_VOLOPT:-}
+      - ${DB26_DBCONFIG}:/opt/oracle/dbconfig${LAB_VOLOPT:-}
+      - ${DB26_LOGS}:/opt/oracle/scripts/logs
+      - ${LAB_SHARED}:/opt/oracle/data
+      - ../../common/scripts:/opt/oracle/common/scripts:ro
+      - ../../demos:/opt/oracle/demos:ro
+      - ./setup/db26:/opt/oracle/scripts/setup:ro
+      - ./startup/db26:/opt/oracle/scripts/startup:ro
+    ports:
+      - "127.0.0.1:${DB26_PORT}:1521"
+    mem_limit: ${DB26_MEM}
+
+# used only with LAB_STORAGE=volume
+volumes:
+  db26oradata:
+  db26dbconfig:
+# --- EOF ----------------------------------------------------------------------

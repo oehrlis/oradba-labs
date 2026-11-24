@@ -9,6 +9,7 @@ One line per lab. A demo names its lab (`requires: <lab>`), it does not bring it
 | `base26` | 26ai Free = oracle-free-labs `labdb`: CDB `FREE` + `LABPDB1` | `oracle-free-labs:latest` (23.26.3) | 1571 | deep-data demos, base for 26ai-only demos |
 | `seclab` | Default security lab: 19c + 26ai side by side, `LABPDB1` + `DEMOPDB` (SCOTT, TVD_HR, LAB_ADMIN, LAB_USER) | both of the above | 1562, 1572 | security talks (privilege escalation, hold my beer exercises), trainings |
 | `audit26` | Unified Auditing lab: 26ai Free, CDB `FREE` + `AUDITPDB1` (SCOTT, TVD_HR, LAB_ADMIN, LAB_USER), no lab-owned audit policies | `oracle-free-labs:latest` (23.26.3) | 1573 | audit engineering (`ora-db-audit-eng` tests and demos) |
+| `dv26` | Database Vault test lab (throwaway): 26ai Free, CDB `FREE` + `DVPDB1` (SCOTT, LAB_ADMIN, LAB_USER, common `C##DV_OWNER` / `C##DV_ACCTMGR`), DV not configured | `oracle-free-labs:latest` (23.26.3) | 1574 | demo `database-vault` |
 <!-- markdownlint-restore -->
 
 ## Planned (not in M0)

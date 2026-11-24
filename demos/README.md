@@ -43,5 +43,6 @@ baseline (restore point `LAB_BASELINE`).
 | `verifier` - password verifiers, 10G hashes | `demos/verifier/` | `seclab` (db19) | changes `sqlnet.ora`: run `reset.sql`, `make reset` does not revert files |
 | `unified-audit` - policy with paired NOAUDIT | `demos/unified-audit/` | `seclab` (db19, db26) | no restart |
 | `tde` - WALLET_ROOT, keystore, encrypted tablespace | `demos/tde/` | `seclab` (db26) | restart in the solution and in `reset.sql` |
+| `database-vault` - CONFIGURE_DV/ENABLE_DV (root + PDB), role realms, `DV_PATCH_ADMIN` | `demos/database-vault/` | `dv26` (db26) | CDB restart in `02_enable_root.sql`; real reset is `make reset LAB=dv26` |
 | deep-data security demos | talk repository | `base26` (`LABPDB1`) | until DOAG on `labdb`; change: container `base26-db26`, port 1571 |
 <!-- markdownlint-restore -->
