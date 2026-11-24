@@ -43,6 +43,9 @@ All notable changes to this project are documented here. Format based on
 
 ### Fixed
 
+- `init_audit_config.sql`: the daily unified audit archive timestamp job uses
+  `SYS_EXTRACT_UTC(SYSTIMESTAMP) - INTERVAL` instead of `sysdate - N`. `SET_LAST_ARCHIVE_TIMESTAMP` expects UTC;
+  on a UTC+1 server the boundary was off by one hour (lab-verified 2026-11-24). Not run against a lab
 - `labctl.sh`: `DRY_RUN` accepted only `TRUE`; any other spelling (`DRY_RUN=1` called directly) ran
   live. Now `TRUE|1|yes` / `FALSE|0|no` (case-insensitive), anything else is an error
 

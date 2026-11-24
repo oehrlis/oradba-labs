@@ -14,7 +14,7 @@
 --              TABLESPACE NAME   Name of the audit tablespace. Default is AUDIT_DATA
 --              DATAFILE SIZE     Initial size of datafile. Default 20480K
 --              AUDIT RETENTION   Day for which a audit timestamp will be created e.g.
---                                sysdate - <AUDIT RETENTION> This does help to create
+--                                UTC now - <AUDIT RETENTION> This does help to create
 --                                somekind of time window where audit records will be
 --                                awailable on the system. This amount of DAY
 --                                is also the fallback when the AVAGENT does not CREATE
@@ -148,12 +148,13 @@ BEGIN
     sys.dbms_scheduler.create_job (
       job_name   => 'DAILY_UNIFIED_AUDIT_TIMESTAMP',
       job_type   => 'PLSQL_BLOCK',
+      -- SET_LAST_ARCHIVE_TIMESTAMP expects UTC: sysdate shifts the boundary by the server UTC offset
       job_action => 'BEGIN sys.dbms_audit_mgmt.set_last_archive_timestamp(audit_trail_type => 
-                      sys.dbms_audit_mgmt.audit_trail_unified,last_archive_time => sysdate-&&_AUDIT_RETENTION); END;',
+                      sys.dbms_audit_mgmt.audit_trail_unified,last_archive_time => sys_extract_utc(systimestamp) - INTERVAL ''&&_AUDIT_RETENTION'' DAY); END;',
       start_date => sysdate,
       repeat_interval => 'FREQ=HOURLY;INTERVAL=24',
       enabled    =>  TRUE,
-      comments   => 'Archive timestamp for unified audit to sysdate-&&_AUDIT_RETENTION'
+      comments   => 'Archive timestamp for unified audit to UTC now - &&_AUDIT_RETENTION days'
     );
     sys.dbms_output.put_line('created');
   EXCEPTION
