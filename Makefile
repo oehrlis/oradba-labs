@@ -7,7 +7,7 @@
 # Date.......: 2026-11-13
 # Revision...: 0.2.0
 # Purpose....: oradba-labs - one lab on push of a button:
-#              make list | up | down | reset | rebuild | status | connect | verify LAB=<name>
+#              make list | up | down | reset | rebuild | status | connect | verify | snapshot LAB=<name>
 # Notes......: The lab logic lives in common/scripts/labctl.sh; this file only
 #              maps targets to it. Use 'make help' for all targets.
 # Reference..: https://github.com/oehrlis/oradba-labs
@@ -23,6 +23,7 @@ LABCTL := common/scripts/labctl.sh
 LAB ?=
 DB ?=
 PURGE ?= 0
+OUT ?=
 COMPOSE ?= docker
 export COMPOSE
 DRY_RUN ?=
@@ -47,7 +48,7 @@ help: ## Show this help
 # Lab lifecycle
 # ==============================================================================
 
-.PHONY: list up down reset rebuild status connect verify
+.PHONY: list up down reset rebuild status connect verify snapshot
 list: ## List all labs
 	@$(LABCTL) list
 
@@ -71,6 +72,9 @@ connect: ## sqlplus / as sysdba into LAB (DB=db19|db26, default first)
 
 verify: ## Check LAB and print connect strings
 	@$(LABCTL) verify $(LAB)
+
+snapshot: ## Single-use dictionary lab: up, snapshot hook, down PURGE=1, cleanup checks (LAB=dict26|dict19 [OUT=dir])
+	@OUT=$(OUT) $(LABCTL) $(DRY) snapshot $(LAB)
 
 # ==============================================================================
 # Feature probe

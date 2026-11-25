@@ -6,7 +6,7 @@
 # Author.....: Stefan Oehrli (oes) stefan.oehrli@oradba.ch
 # Editor.....: Stefan Oehrli
 # Date.......: 2026-11-22
-# Version....: 0.2.1
+# Version....: 0.2.2
 # Purpose....: Verify a running lab: container health, database state, Unified
 #              Auditing, restore point, recovery area usage (WARN from 80 %),
 #              listener connection per PDB, expected lab accounts - and print
@@ -16,6 +16,8 @@
 #              - The connection test logs in as SYSTEM through the listener
 #                inside the container; the password comes from the container
 #                environment via stdin, it never reaches argv.
+#              - VERIFY_PROFILE=snapshot: no baseline / recovery area / Unified
+#                Auditing requirement (labs dict26, dict19).
 #              - Exit 0 all checks passed, 1 at least one check failed. A WARN
 #                does not fail the run.
 # Reference..: https://github.com/oehrlis/oradba-labs
@@ -24,6 +26,7 @@
 # ------------------------------------------------------------------------------
 # CHANGE LOG:
 # 2026-11-13  oes  Initial release                                    0.1.0
+# 2026-11-25  oes  VERIFY_PROFILE=snapshot (dict26/dict19)             0.2.2
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
@@ -110,20 +113,27 @@ verify_container() {
     val=$(q "${c}" "SELECT version_full FROM v\$instance")
     ok "version ${val}"
     val=$(q "${c}" "SELECT open_mode || ' / ' || log_mode FROM v\$database")
-    if [[ "${val}" == "READ WRITE / ARCHIVELOG" ]]; then ok "CDB ${sid}: ${val}"; else fail "CDB ${sid}: ${val}"; fi
-    val=$(q "${c}" "SELECT value FROM v\$option WHERE parameter = 'Unified Auditing'")
-    if [[ "${val}" == "TRUE" ]]; then ok "Unified Auditing pure mode"; else fail "Unified Auditing: ${val}"; fi
-    val=$(q "${c}" "SELECT COUNT(*) FROM v\$restore_point WHERE name = 'LAB_BASELINE' AND guarantee_flashback_database = 'YES'")
-    if [[ "${val}" == "1" ]]; then ok "restore point LAB_BASELINE (make reset)"; else fail "restore point LAB_BASELINE missing"; fi
-    # archived logs of every reset incarnation stay in the recovery area (no backups,
-    # nothing reclaimable); at 100 % the instance stops with ORA-16038 at the next start
-    val=$(q "${c}" "SELECT ROUND(SUM(percent_space_used - percent_space_reclaimable)) FROM v\$recovery_area_usage")
-    if [[ ! "${val:-0}" =~ ^[0-9]+$ ]]; then
-        warn "recovery area usage not readable: ${val}"
-    elif ((${val:-0} < 80)); then
-        ok "recovery area ${val:-0} % used"
+    if [[ "${VERIFY_PROFILE:-}" == "snapshot" ]]; then
+        # dictionary snapshot labs: no baseline, no recovery area, archivelog off is fine
+        if [[ "${val}" == "READ WRITE / NOARCHIVELOG" ]]; then ok "CDB ${sid}: ${val}"; else fail "CDB ${sid}: ${val} (snapshot labs run NOARCHIVELOG)"; fi
+        val=$(q "${c}" "SELECT value FROM v\$option WHERE parameter = 'Unified Auditing'")
+        ok "Unified Auditing option: ${val:-n/a} (informational)"
     else
-        warn "recovery area ${val} % used - archived logs of earlier incarnations fill it (ORA-19809 at 100 %)"
+        if [[ "${val}" == "READ WRITE / ARCHIVELOG" ]]; then ok "CDB ${sid}: ${val}"; else fail "CDB ${sid}: ${val}"; fi
+        val=$(q "${c}" "SELECT value FROM v\$option WHERE parameter = 'Unified Auditing'")
+        if [[ "${val}" == "TRUE" ]]; then ok "Unified Auditing pure mode"; else fail "Unified Auditing: ${val}"; fi
+        val=$(q "${c}" "SELECT COUNT(*) FROM v\$restore_point WHERE name = 'LAB_BASELINE' AND guarantee_flashback_database = 'YES'")
+        if [[ "${val}" == "1" ]]; then ok "restore point LAB_BASELINE (make reset)"; else fail "restore point LAB_BASELINE missing"; fi
+        # archived logs of every reset incarnation stay in the recovery area (no backups,
+        # nothing reclaimable); at 100 % the instance stops with ORA-16038 at the next start
+        val=$(q "${c}" "SELECT ROUND(SUM(percent_space_used - percent_space_reclaimable)) FROM v\$recovery_area_usage")
+        if [[ ! "${val:-0}" =~ ^[0-9]+$ ]]; then
+            warn "recovery area usage not readable: ${val}"
+        elif ((${val:-0} < 80)); then
+            ok "recovery area ${val:-0} % used"
+        else
+            warn "recovery area ${val} % used - archived logs of earlier incarnations fill it (ORA-19809 at 100 %)"
+        fi
     fi
     if [[ -n "${port}" ]] && nc -z 127.0.0.1 "${port}" 2>/dev/null; then
         ok "listener reachable on 127.0.0.1:${port}"

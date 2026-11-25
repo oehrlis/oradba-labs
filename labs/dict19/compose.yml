@@ -1,0 +1,30 @@
+# ------------------------------------------------------------------------------
+# oradba-labs - dict19: Oracle Database 19c EE, single-use dictionary lab
+# trivadis/ora_db until oradba-docker (M2), mapped to the Oracle container
+# contract (data /u01, INSTANCE_INIT). One setup hook (PDB1), no baseline.
+# Lifecycle: make snapshot LAB=dict19.
+# Image, version, port, password: lab.env (copy of lab.env.example)
+# ------------------------------------------------------------------------------
+name: oradba-labs-dict19
+
+services:
+  db19:
+    image: ${DB19_IMAGE}:${DB19_VERSION}
+    container_name: dict19-db19
+    hostname: dict19-db19
+    restart: "no"
+    environment:
+      CONTAINER: "TRUE"
+      ORACLE_SID: ${DB19_SID}
+      ORACLE_PDB: ${DB19_PDB}
+      ORACLE_PWD: ${ORACLE_PWD}
+      INSTANCE_INIT: /u01/config
+      TZ: ${TZ}
+    volumes:
+      - ${DB19_DATA}:/u01${LAB_VOLOPT:-}
+      - ../../common/scripts:/opt/oracle/common/scripts:ro
+      - ./setup/db19:/u01/config/setup:ro
+    ports:
+      - "127.0.0.1:${DB19_PORT}:1521"
+    mem_limit: ${DB19_MEM}
+# --- EOF ----------------------------------------------------------------------

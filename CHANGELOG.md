@@ -5,6 +5,20 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+### Added
+
+- Labs `dict26` and `dict19`: single-use dictionary labs for `aitk oracle-check`. `make snapshot LAB=...` runs up,
+  dictionary export of root and PDB, parse smoke test, purge (EXIT trap, also on failure) and seven cleanup checks;
+  `lab-meta.json` with version, RU, behind flag and measured resources. Target levels in
+  `common/config/target-levels.env`. dict19 creates `PDB1` with a setup hook and the snapshot waits for an open PDB
+- `common/scripts/dict_snapshot.sh` / `.py`, `common/sql/dict_snapshot.sql`; `lab_verify.sh` profile `snapshot`
+  (requires NOARCHIVELOG, skips baseline checks)
+
+### Fixed
+
+- CSPU level is read from the patch build date in `DBA_REGISTRY_SQLPATCH`, not the apply date (a fresh lab applies
+  its RU today and looked current)
+
 ## [0.3.0] - 2026-11-24
 
 ### Added

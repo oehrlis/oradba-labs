@@ -1,0 +1,28 @@
+# ------------------------------------------------------------------------------
+# oradba-labs - dict26: Oracle AI Database 26ai Free, single-use dictionary lab
+# Oracle standard image (not oracle-free-labs), no setup/startup hooks, no
+# baseline; setup hook switches to NOARCHIVELOG. Lifecycle: make snapshot LAB=dict26.
+# Contract: Oracle container pattern (E8). Storage: bind (E9), the DB26_*
+# variables are set by common/scripts/labctl.sh.
+# Image, version, port, password: lab.env (copy of lab.env.example)
+# ------------------------------------------------------------------------------
+name: oradba-labs-dict26
+
+services:
+  db26:
+    image: ${DB26_IMAGE}:${DB26_VERSION}
+    container_name: dict26-db26
+    hostname: dict26-db26
+    restart: "no"
+    environment:
+      ORACLE_PWD: ${ORACLE_PWD}
+      ENABLE_ARCHIVELOG: "false"
+      TZ: ${TZ}
+    volumes:
+      - ${DB26_ORADATA}:/opt/oracle/oradata${LAB_VOLOPT:-}
+      - ${DB26_DBCONFIG}:/opt/oracle/dbconfig${LAB_VOLOPT:-}
+      - ./setup/db26:/opt/oracle/scripts/setup:ro
+    ports:
+      - "127.0.0.1:${DB26_PORT}:1521"
+    mem_limit: ${DB26_MEM}
+# --- EOF ----------------------------------------------------------------------

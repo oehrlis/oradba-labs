@@ -6,9 +6,9 @@
 # Author.....: Stefan Oehrli (oes) stefan.oehrli@oradba.ch
 # Editor.....: Stefan Oehrli
 # Date.......: 2026-11-23
-# Version....: 0.2.2
+# Version....: 0.3.0
 # Purpose....: Lab lifecycle behind the Makefile: list, up, down, reset,
-#              rebuild, status, connect, verify for labs/<name>.
+#              rebuild, status, connect, verify, snapshot for labs/<name>.
 # Notes......: - Thin wrapper around docker compose (podman later, COMPOSE=).
 #                The image does the database work: create or start, setup/
 #                and startup/ hooks (Oracle container pattern, E8).
@@ -24,6 +24,10 @@
 #                START_TIMEOUT. A first start (image creates the database,
 #                unhealthy during 19c dbca) waits up to READY_TIMEOUT.
 #              - Passwords never go to argv: sqlplus reads them from stdin.
+#              - snapshot = up -> verify -> labs/<lab>/hooks/snapshot.sh -> down
+#                with purge -> cleanup checks -> remove lab.env; the purge runs
+#                in an EXIT trap, also after a failure or Ctrl-C. Only for labs
+#                with LAB_BASELINE=none in lab.env (single-use labs).
 # Reference..: https://github.com/oehrlis/oradba-labs
 # License....: Apache License Version 2.0, January 2004 as shown
 #              at http://www.apache.org/licenses/
@@ -33,6 +37,7 @@
 # 2026-11-13  oes  Mechanics per E8-E11: no own setup layer, storage  0.2.0
 # 2026-11-23  oes  reset deletes archived logs of orphan incarnations 0.2.1
 # 2026-11-23  oes  wait_ready: start vs create, abort with alert log 0.2.2
+# 2026-11-25  oes  snapshot (dict26/dict19): up, hook, purge, checks   0.3.0
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
@@ -54,6 +59,7 @@ case "${DRY_RUN}" in
         ;;
 esac
 PURGE=${PURGE:-"0"}
+SNAP_LAB="" SNAP_DIR="" SNAP_OUT="" SNAP_UP_S=0 SNAP_SNAP_S=0 SNAP_DOWN_S=0
 COMPOSE=${COMPOSE:-"docker"}
 RESTORE_POINT="LAB_BASELINE"
 READY_TIMEOUT=${READY_TIMEOUT:-3600} # first 19c start runs dbca
@@ -84,6 +90,8 @@ Commands:
   status <lab>         Containers, health, restore points, storage
   connect <lab> [db]   sqlplus / as sysdba into a lab database (db19|db26)
   verify <lab>         Checks and connect strings
+  snapshot <lab>       Single-use dictionary lab: up, hooks/snapshot.sh, down --purge,
+                       cleanup checks (output dir: OUT=, default under \${TMPDIR})
 
 Options:
   -h, --help           Show this help and exit
@@ -242,6 +250,14 @@ has_baseline() {
 }
 
 # ------------------------------------------------------------------------------
+# Function: no_baseline
+# Purpose.: Single-use labs (LAB_BASELINE=none in lab.env) have no restore point
+# ------------------------------------------------------------------------------
+no_baseline() {
+    [[ "$(env_value "$1" LAB_BASELINE)" == "none" ]]
+}
+
+# ------------------------------------------------------------------------------
 # Function: data_exists
 # Purpose.: Does the bind directory of a service hold a database? Same test as
 #           the image uses to choose between start and create:
@@ -336,7 +352,7 @@ wait_ready() {
             fi
             health=$(${COMPOSE} inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "${c}")
             if [[ "${health}" == "healthy" ]]; then
-                has_baseline "${c}" || pending+=" ${c}(no ${RESTORE_POINT} yet)"
+                no_baseline "${lab}" || has_baseline "${c}" || pending+=" ${c}(no ${RESTORE_POINT} yet)"
                 continue
             fi
             started=$(${COMPOSE} inspect --format '{{.State.StartedAt}}' "${c}")
@@ -553,6 +569,106 @@ cmd_verify() {
     COMPOSE="${COMPOSE}" "${dir}/verify.sh"
 }
 
+# ------------------------------------------------------------------------------
+# Function: cleanup_checks
+# Purpose.: After a purge: is anything of the lab left? Prints PASS/FAIL per check
+# Returns.: 0 everything gone, 1 otherwise. Images are cached on purpose.
+# ------------------------------------------------------------------------------
+cleanup_checks() {
+    local lab="$1" dir="$2" out n failed=0 label
+    label="label=com.docker.compose.project=oradba-labs-${lab}"
+    check() { # name, leftover (empty = PASS)
+        if [[ -z "$2" ]]; then
+            log_info "cleanup PASS  $1"
+        else
+            log_error "cleanup FAIL  $1: $(tr '\n' ' ' <<<"$2")"
+            failed=1
+        fi
+    }
+    out=""
+    [[ -e "${LAB_DATA_DIR}" ]] && out="${LAB_DATA_DIR}"
+    check "data directory gone" "${out}"
+    check "no container (compose label)" "$(${COMPOSE} ps -a --filter "${label}" --format '{{.Names}}')"
+    check "no container (name ${lab}-*)" "$(${COMPOSE} ps -a --filter "name=^${lab}-" --format '{{.Names}}')"
+    check "no volume" "$(${COMPOSE} volume ls -q --filter "${label}")"
+    check "no network" "$(${COMPOSE} network ls -q --filter "${label}")"
+    out=""
+    [[ -e "${dir}/lab.env" ]] && out="${dir}/lab.env"
+    check "lab.env removed" "${out}"
+    n=$(find "${LAB_DATA_DIR%/*}" -maxdepth 1 -name "${lab}*" 2>/dev/null | head -5)
+    check "nothing named ${lab}* below ${LAB_DATA_DIR%/*}" "${n}"
+    return "${failed}"
+}
+
+# ------------------------------------------------------------------------------
+# Function: snapshot_exit
+# Purpose.: EXIT trap of cmd_snapshot: purge, cleanup checks, remove lab.env,
+#           add timings and the cleanup result to lab-meta.json. Never skipped.
+# ------------------------------------------------------------------------------
+snapshot_exit() {
+    local rc=$? cleanup="PASS" dir="${SNAP_DIR}" lab="${SNAP_LAB}" down_start
+    trap - EXIT
+    set +e
+    down_start=$(date +%s)
+    log_info "snapshot ${lab}: purge (exit code so far ${rc})"
+    PURGE=1 purge_data "${lab}"
+    SNAP_DOWN_S=$(($(date +%s) - down_start))
+    # lab.env holds only generated throw-away passwords - regenerated by the next run
+    rm -f "${dir}/lab.env"
+    cleanup_checks "${lab}" "${dir}" || cleanup="FAIL"
+    if [[ -f "${SNAP_OUT}/lab-meta.json" ]]; then
+        python3 -I - "${SNAP_OUT}/lab-meta.json" "${cleanup}" "${SNAP_UP_S}" "${SNAP_SNAP_S}" "${SNAP_DOWN_S}" <<'PY'
+import json, sys
+p, cleanup, up, snap, down = sys.argv[1:6]
+m = json.load(open(p))
+m["measured"].update({"up_s": int(up), "snapshot_s": int(snap), "down_s": int(down)})
+m["cleanup"] = cleanup
+json.dump(m, open(p, "w"), indent=2)
+open(p, "a").write("\n")
+PY
+    fi
+    if [[ "${cleanup}" == "FAIL" ]]; then
+        log_error "snapshot ${lab}: cleanup FAILED - something is left, see FAIL lines above"
+        exit 1
+    fi
+    exit "${rc}"
+}
+
+# ------------------------------------------------------------------------------
+# Function: cmd_snapshot
+# Purpose.: up -> verify -> hooks/snapshot.sh -> purge -> cleanup checks
+# ------------------------------------------------------------------------------
+cmd_snapshot() {
+    local lab="$1" dir t0 leftover
+    dir=$(lab_dir "${lab}")
+    [[ -x "${dir}/hooks/snapshot.sh" ]] || die "lab ${lab} has no hooks/snapshot.sh - not a snapshot lab"
+    SNAP_OUT="${OUT:-${TMPDIR:-/tmp}/oradba-labs-snapshots/${lab}-$(date +%Y%m%d-%H%M%S)}"
+    if [[ "${DRY_RUN}" == "TRUE" ]]; then
+        log_info "DRY-RUN: up ${lab}, run ${dir}/hooks/snapshot.sh into ${SNAP_OUT}, purge, cleanup checks, remove lab.env"
+        return 0
+    fi
+    ensure_env "${lab}"
+    no_baseline "${lab}" || die "${dir}/lab.env: LAB_BASELINE=none missing - snapshot is for single-use labs only"
+    # a snapshot lab is single-use: refuse to run over leftovers (they would be purged without a look)
+    leftover="$(env_value "${lab}" LAB_DATA_BASE)"
+    leftover="${leftover:-${HOME}/oradba-labs-data}/${lab}"
+    if [[ -e "${leftover}" || -n "$(containers "${lab}")" ]]; then
+        die "leftovers of ${lab} found (${leftover} or containers) - 'make down LAB=${lab} PURGE=1' first"
+    fi
+    storage_env "${lab}"
+    mkdir -p "${SNAP_OUT}"
+    SNAP_LAB="${lab}" SNAP_DIR="${dir}" SNAP_UP_S=0 SNAP_SNAP_S=0 SNAP_DOWN_S=0
+    trap snapshot_exit EXIT
+    t0=$(date +%s)
+    cmd_up "${lab}"
+    SNAP_UP_S=$(($(date +%s) - t0))
+    t0=$(date +%s)
+    LAB="${lab}" LAB_OUT="${SNAP_OUT}" LAB_CONTAINER="$(containers "${lab}" | head -1)" \
+        LAB_DATA_DIR="${LAB_DATA_DIR}" REPO_ROOT="${REPO_ROOT}" COMPOSE="${COMPOSE}" "${dir}/hooks/snapshot.sh"
+    SNAP_SNAP_S=$(($(date +%s) - t0))
+    log_info "snapshot ${lab}: up ${SNAP_UP_S}s, snapshot ${SNAP_SNAP_S}s, output ${SNAP_OUT}"
+}
+
 main() {
     local cmd="" args=()
     while [[ $# -gt 0 ]]; do
@@ -579,7 +695,7 @@ main() {
     done
     case "${cmd}" in
         list) cmd_list ;;
-        up | down | reset | rebuild | status | verify) "cmd_${cmd}" "${args[@]:-}" ;;
+        up | down | reset | rebuild | status | verify | snapshot) "cmd_${cmd}" "${args[@]:-}" ;;
         connect) cmd_connect "${args[@]:-}" ;;
         "")
             usage
