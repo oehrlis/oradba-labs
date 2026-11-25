@@ -11,6 +11,7 @@ One line per lab. A demo names its lab (`requires: <lab>`), it does not bring it
 | `audit26` | Unified Auditing lab: 26ai Free, CDB `FREE` + `AUDITPDB1` (SCOTT, TVD_HR, LAB_ADMIN, LAB_USER), no lab-owned audit policies | `oracle-free-labs:latest` (23.26.3) | 1573 | audit engineering (`ora-db-audit-eng` tests and demos) |
 | `dv26` | Database Vault test lab (throwaway): 26ai Free, CDB `FREE` + `DVPDB1` (SCOTT, LAB_ADMIN, LAB_USER, common `C##DV_OWNER` / `C##DV_ACCTMGR`), DV not configured | `oracle-free-labs:latest` (23.26.3) | 1574 | demo `database-vault` |
 | `forensics` | Throwaway forensics lab: 26ai Free, CDB `FREE` + `FXPDB1` (archivelog, supplemental logging, tablespace `FX_DATA`); may be destroyed and rebuilt | `oracle-free-labs:latest` (23.26.3) | 1576 | delphi-oradba forensics recipes |
+| `forensics19` | Throwaway 19c counterpart of `forensics`: 19c EE, CDB `FX19` + `FXPDB1` (supplemental logging, tablespace `FX_DATA`); may be destroyed and rebuilt | `trivadis/ora_db:19.27.0.0` | 1577 | delphi-oradba verification (19c) |
 <!-- markdownlint-restore -->
 
 ## Planned (not in M0)

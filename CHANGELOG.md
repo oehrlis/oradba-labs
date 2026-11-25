@@ -7,6 +7,8 @@ All notable changes to this project are documented here. Format based on
 
 ### Added
 
+- Lab `forensics19`: throwaway 19c counterpart of `forensics` (19c EE `trivadis/ora_db:19.27.0.0`, CDB `FX19` +
+  `FXPDB1`, port 1577) for the delphi-oradba verification of the legacy forensics capture on 19c
 - Lab `forensics`: throwaway lab for Oracle forensics and data-recovery recipes (delphi-oradba
   `topics/forensics/recipes/`) on top of `base26` (26ai Free 23.26.3, CDB `FREE` + `FXPDB1`, port 1576),
   archivelog, minimal supplemental logging, small tablespace `FX_DATA`. May be destroyed and rebuilt at will;

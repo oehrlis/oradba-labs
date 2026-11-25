@@ -1,0 +1,38 @@
+# ------------------------------------------------------------------------------
+# oradba-labs - forensics19: Oracle Database 19c EE, CDB + FXPDB1 (labdb core config)
+# Contract: Oracle container pattern (E8). Storage: LAB_STORAGE=bind|volume (E9),
+# the DB*_DATA / DB*_ORADATA variables are set by common/scripts/labctl.sh.
+# Image, version, ports and passwords: lab.env (copy of lab.env.example)
+# ------------------------------------------------------------------------------
+name: oradba-labs-forensics19
+
+services:
+  db19:
+    image: ${DB19_IMAGE}:${DB19_VERSION}
+    container_name: forensics19-db19
+    hostname: forensics19-db19
+    restart: "no"
+    environment:
+      # trivadis/ora_db until M2 - mapped to the Oracle container contract:
+      # hooks via INSTANCE_INIT, data under /u01 (oradba-docker images: E8)
+      CONTAINER: "TRUE"
+      ORACLE_SID: ${DB19_SID}
+      ORACLE_PDB: FXPDB1
+      ORACLE_PWD: ${ORACLE_PWD}
+      INSTANCE_INIT: /u01/config
+      TZ: ${TZ}
+    volumes:
+      - ${DB19_DATA}:/u01${LAB_VOLOPT:-}
+      - ${DB19_LOGS}:/opt/oracle/scripts/logs
+      - ${LAB_SHARED}:/opt/oracle/data
+      - ../../common/scripts:/opt/oracle/common/scripts:ro
+      - ./setup/db19:/u01/config/setup:ro
+      - ./startup/db19:/u01/config/startup:ro
+    ports:
+      - "127.0.0.1:${DB19_PORT}:1521"
+    mem_limit: ${DB19_MEM}
+
+# used only with LAB_STORAGE=volume
+volumes:
+  db19data:
+# --- EOF ----------------------------------------------------------------------
