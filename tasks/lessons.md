@@ -41,3 +41,16 @@ ora-db-audit-eng-Session. `ensure_env` legte eine neue aus der gerade umgestellt
 sie: beim Besitzer nachfragen, nie die Vorlage erzeugen lassen. `make up`-Ausgaben nicht abschneiden.
 
 verify: vor jedem `make up` eines fremden Labs existiert `labs/<lab>/lab.env` im aktuellen Checkout
+
+## 2026-11-25 - Pruef-Gate per Pipe verschluckt, Commit trotz rotem `make check`
+
+**Was passiert ist:** `make check 2>&1 | tail -4 && git commit ...` - gitleaks meldete einen Fund, `make` endete
+mit Fehler, die Pipe lieferte aber den Exit-Code von `tail` (0), der Commit lief durch. Kurz danach nochmals mit
+`markdownlint ...; git commit` (Semikolon statt `&&`). Der Fund war harmlos (oeffentlicher Analytics-Key im
+gitignorierten `.work/`), beide Commits waren ungepusht und wurden per `--amend` korrigiert.
+
+**Regel:** Ein Gate vor `commit`/`tag`/`push` nie durch eine Pipe oder mit `;` verketten. Gate allein ausfuehren
+(Ausgabe in eine Datei, `rc=$?` pruefen) oder `set -o pipefail` setzen - erst bei rc=0 committen.
+
+verify: kein `make check ... | ... && git commit` und kein `<lint>; git commit` im Session-Verlauf; vor jedem
+Commit steht ein `make check` mit rc=0

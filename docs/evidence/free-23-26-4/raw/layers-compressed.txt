@@ -1,0 +1,18 @@
+== 23.26.3.0: compressed layers > 50 MB
+amd64 layer#0 100 MiB
+amd64 layer#2 719 MiB
+amd64 layer#4 1809 MiB
+amd64 layer#21 494 MiB
+amd64 layer#22 409 MiB
+arm64 layer#0 98 MiB
+arm64 layer#2 773 MiB
+arm64 layer#4 1580 MiB
+arm64 layer#21 489 MiB
+arm64 layer#22 419 MiB
+== 23.26.4.0: compressed layers > 50 MB
+amd64 layer#0 92 MiB
+amd64 layer#2 48 MiB
+amd64 layer#5 1870 MiB
+arm64 layer#0 90 MiB
+arm64 layer#2 99 MiB
+arm64 layer#5 1636 MiB

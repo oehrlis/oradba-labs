@@ -1,0 +1,14 @@
+total 378576
+drwxr-xr-x 1 root root      4096 2026-07-08 21:59 .
+drwxr-xr-x 1 root root      4096 2026-07-08 21:59 ..
+-rw-r--r-- 1 root root         0 2026-07-08 21:41 .gpgkeyschecked.yum
+-rw-r--r-- 1 root root         2 2026-07-08 21:59 expired_repos.json
+drwxr-xr-x 1 root root      4096 2026-07-08 21:59 ol8_appstream-d14caf85a8627678
+-rw-r--r-- 1 root root  60389500 2026-07-08 21:42 ol8_appstream-filenames.solvx
+-rw-r--r-- 1 root root  11633587 2026-07-08 21:42 ol8_appstream-updateinfo.solvx
+-rw-r--r-- 1 root root  14295945 2026-07-08 21:43 ol8_appstream.solv
+drwxr-xr-x 1 root root      4096 2026-07-08 21:59 ol8_baseos_latest-b8b2f4a8c35dd961
+/var/cache/dnf	gzip_bytes=671639197
+/opt/oracle/product/26ai/dbhomeFree/assistants/dbca/templates	gzip_bytes=386026352
+/opt/oracle/oradata	gzip_bytes=482759471
+/opt/oracle/diag	gzip_bytes=1666764

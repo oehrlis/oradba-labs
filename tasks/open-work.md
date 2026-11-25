@@ -16,6 +16,20 @@ Nur offene Tasks. Erledigtes steht im CHANGELOG, in `docs/architecture.md` und i
   - Optionen: Setup-Schritte als idempotente Startup-Hooks auf der Prebuilt-DB (Umbau der Lab-Mechanik,
     Architektur-Entscheid 8) - oder bei 23.26.3 bleiben, bis oradba-docker ein eigenes Image baut (labs-M2)
   - Danach umstellen: base26, audit26 (nach dem Purge-Test), seclab beim Neuaufbau; 19c bleibt `trivadis/ora_db`
+  - Stand 2026-11-25 (Belege `docs/evidence/free-23-26-4/`, Gate erledigt): kein fehlerhafter Build, sondern ein
+    gewollter Umbau mit unvollstaendiger Doku. `startPrebuilt.sh` und `configurePrebuiltPdb.sh` sind neu ("Since:
+    September, 2026"), die Prebuilt-DB liegt als tar.gz im Image. `ORACLE_CHARACTERSET` konvertiert nur noch
+    `FREEPDB1` per `INTERNAL_CONVERT`, `CDB$ROOT` bleibt AL32UTF8. Ein fehlerhaftes Startup-Skript beendet den
+    Container. Der Create-Pfad hat kein Template mehr, bei SID != FREE fehlt auch das Response-Template.
+    Registry-Doku und GitHub (oracle/docker-images) beschreiben noch 23.26.3. Groessendifferenz: dnf-Cache 0.67
+    GB und Seed-Dateien 0.39 GB komprimiert - die Vermutung "1.6 GB = Seed" ist widerlegt
+  - Fuer den Entscheid: Startup-Hooks auf der Prebuilt-DB muessen idempotent sein **und** fehlerfrei enden (sonst
+    stoppt der Container). Ein anderer Zeichensatz (z.B. dict-Labs) geht nur auf PDB-Ebene, die CDB bleibt AL32UTF8
+- [ ] Laufzeit-Tests Free 23.26.4 offline starten (Flieger, Stefan): `caffeinate -dims
+  docs/evidence/free-23-26-4/collect.sh --phase runtime --yes`, Strom + Deckel offen, ca. 1-2 h [P1]
+- [ ] Free 23.26.4: `raw/` auswerten, Tabelle belegt/widerlegt/offen in `docs/evidence/free-23-26-4/README.md`
+  nachfuehren, `mail-draft.md` schreiben (oder Empfehlung "keine Mail"/Doku-Rueckmeldung), dann Entscheid oben
+  [P1]
 
 ## Wartet
 

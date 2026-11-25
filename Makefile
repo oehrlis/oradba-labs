@@ -29,7 +29,7 @@ export COMPOSE
 DRY_RUN ?=
 DRY := $(if $(filter 1 true TRUE yes,$(DRY_RUN)),--dry-run,)
 
-SHELL_FILES = $(shell find common labs -name '*.sh' -type f | sort)
+SHELL_FILES = $(shell find common labs docs -name '*.sh' -type f | sort)
 
 # ==============================================================================
 # Help

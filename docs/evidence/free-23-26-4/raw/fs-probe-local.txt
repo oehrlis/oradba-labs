@@ -1,0 +1,229 @@
+=================== 23.26.3.0
+--- ls -la /opt/oracle
+total 216
+drwxr-xr-x 1 oracle oinstall  4096 Jul  8 22:01 .
+drwxr-xr-x 1 root   root      4096 Jul  8 22:01 ..
+-rw-r--r-- 1 oracle dba       3378 Jul  7 07:20 Dockerfile
+-rw-r--r-- 1 oracle dba      21956 Jul  7 07:20 README.md
+drwxr-x--- 3 oracle oinstall  4096 Jul  8 21:54 admin
+drwxr-x--- 3 oracle oinstall  4096 Jul  8 21:54 audit
+-rw-r--r-- 1 oracle dba       1160 Jul  7 07:20 blobReader.py
+drwxr-xr-x 4 oracle oinstall  4096 Jul  8 21:54 cfgtoollogs
+-rwxr-xr-- 1 oracle dba       2053 Jul  7 07:20 checkDBLockStatus.sh
+-rwxr-xr-- 1 oracle dba       6264 Jul  7 07:20 checkDBStatus.sh
+lrwxrwxrwx 1 oracle oinstall    50 Jul  8 21:47 configDataguardPrereqs.sh -> /opt/oracle/scripts/base/configDataguardPrereqs.sh
+lrwxrwxrwx 1 oracle oinstall    38 Jul  8 21:47 configTcps.sh -> /opt/oracle/scripts/base/configTcps.sh
+-rwxr-xr-- 1 oracle dba      19359 Jul  7 07:20 configure-primary-truecache-service.sh
+-rwxr-xr-x 1 oracle dba       1223 Jul  7 07:20 createBlob.sh
+lrwxrwxrwx 1 oracle oinstall    36 Jul  8 21:47 createDB.sh -> /opt/oracle/scripts/base/createDB.sh
+-rwxr-xr-- 1 oracle dba      28415 Jul  7 07:20 createDB.truecache-wrapper.sh
+-rwxr-xr-x 1 oracle dba       2505 Jul  7 07:20 createService.sh
+-rwxr-xr-- 1 oracle dba       2121 Jul  7 07:20 dbcaUtils.sh
+lrwxrwxrwx 1 oracle oinstall    43 Jul  8 21:47 decryptPassword.sh -> /opt/oracle/scripts/base/decryptPassword.sh
+drwxrwx--- 1 oracle oinstall  4096 Jul  8 21:54 diag
+drwxrwx--- 4 oracle oinstall  4096 Jul  8 21:47 oraInventory
+drwxr-xr-x 1 oracle oinstall  4096 Jul  8 21:58 oradata
+drwxr-xr-x 1 oracle oinstall  4096 Jul  8 21:54 product
+-rwxr-xr-- 1 oracle dba      37748 Jul  7 07:20 registerService.sh
+-rwxr-xr-- 1 oracle oinstall    69 Jul  8 21:53 runOracle.sh
+-rwxr-xr-- 1 oracle oinstall    62 Jul  8 21:41 runOracle.sh.orig
+-rwxr-xr-- 1 oracle oinstall    93 Jul  8 22:01 runOracle.sh.sharding
+-rwxr-xr-x 1 oracle dba       3255 Jul  7 07:20 runOracle.sh.truecache
+lrwxrwxrwx 1 oracle oinstall    42 Jul  8 21:47 runUserScripts.sh -> /opt/oracle/scripts/base/runUserScripts.sh
+drwxr-xr-x 1 oracle dba       4096 Jul  8 22:01 scripts
+lrwxrwxrwx 1 oracle oinstall    39 Jul  8 21:47 setPassword.sh -> /opt/oracle/scripts/base/setPassword.sh
+-rwxr-xr-x 1 oracle dba      11430 Jul  7 07:20 setup.sh
+lrwxrwxrwx 1 oracle oinstall    36 Jul  8 21:47 shutDown.sh -> /opt/oracle/scripts/base/shutDown.sh
+-rw-r--r-- 1 oracle dba        875 Jul  7 07:20 tc-podman.te
+--- du -sxk top-level /opt/oracle/*
+4111408	/opt/oracle/oradata
+3335884	/opt/oracle/product
+22372	/opt/oracle/diag
+1312	/opt/oracle/cfgtoollogs
+692	/opt/oracle/scripts
+96	/opt/oracle/audit
+76	/opt/oracle/oraInventory
+40	/opt/oracle/registerService.sh
+40	/opt/oracle/admin
+28	/opt/oracle/createDB.truecache-wrapper.sh
+24	/opt/oracle/README.md
+20	/opt/oracle/configure-primary-truecache-service.sh
+12	/opt/oracle/setup.sh
+8	/opt/oracle/checkDBStatus.sh
+4	/opt/oracle/tc-podman.te
+4	/opt/oracle/runOracle.sh.truecache
+4	/opt/oracle/runOracle.sh.sharding
+4	/opt/oracle/runOracle.sh.orig
+4	/opt/oracle/runOracle.sh
+4	/opt/oracle/dbcaUtils.sh
+4	/opt/oracle/createService.sh
+4	/opt/oracle/createBlob.sh
+4	/opt/oracle/checkDBLockStatus.sh
+4	/opt/oracle/blobReader.py
+4	/opt/oracle/Dockerfile
+0	/opt/oracle/shutDown.sh
+0	/opt/oracle/setPassword.sh
+0	/opt/oracle/runUserScripts.sh
+0	/opt/oracle/decryptPassword.sh
+0	/opt/oracle/createDB.sh
+0	/opt/oracle/configTcps.sh
+0	/opt/oracle/configDataguardPrereqs.sh
+--- du -sxk ORACLE_HOME subdirs >100MB
+538392	/opt/oracle/product/26ai/dbhomeFree/bin
+467632	/opt/oracle/product/26ai/dbhomeFree/lib
+458960	/opt/oracle/product/26ai/dbhomeFree/assistants
+366188	/opt/oracle/product/26ai/dbhomeFree/ctx
+228592	/opt/oracle/product/26ai/dbhomeFree/javavm
+217564	/opt/oracle/product/26ai/dbhomeFree/rdbms
+160360	/opt/oracle/product/26ai/dbhomeFree/jdk
+158392	/opt/oracle/product/26ai/dbhomeFree/sqlcl
+103840	/opt/oracle/product/26ai/dbhomeFree/oracore
+--- dbca templates
+total 428312
+drwxr-xr-x 2 oracle oinstall      4096 Jul  8 21:47 .
+drwxr-xr-x 5 oracle oinstall      4096 Jul  8 21:47 ..
+-rw-r----- 1 oracle oinstall      5849 Jul  8 21:02 FREE_Database.dbc
+-rw-r----- 1 oracle oinstall  18792448 Jul  8 21:02 FREE_Seed_Database.ctl
+-rw-r----- 1 oracle oinstall 277610496 Jul  8 21:02 FREE_Seed_Database.dfb1
+-rw-r----- 1 oracle oinstall  41951232 Jul  8 21:02 FREE_Seed_Database.dfb2
+-rw-r----- 1 oracle oinstall   1155072 Jul  8 21:02 FREE_Seed_Database.dfb3
+-rw-r----- 1 oracle oinstall   1081344 Jul  8 21:02 FREE_Seed_Database.dfb4
+-rw-r----- 1 oracle oinstall  31006720 Jul  8 21:02 FREE_Seed_Database.dfb5
+-rw-r----- 1 oracle oinstall  65880064 Jul  8 21:02 FREE_Seed_Database.dfb6
+-rw-r----- 1 oracle oinstall   1097728 Jul  8 21:02 FREE_Seed_Database.dfb7
+--- oradata
+4111408	/opt/oracle/oradata
+/opt/oracle/oradata
+/opt/oracle/oradata/FREE
+/opt/oracle/oradata/FREE/FREEPDB1
+/opt/oracle/oradata/FREE/FREEPDB1/sysaux01.dbf
+/opt/oracle/oradata/FREE/FREEPDB1/users01.dbf
+/opt/oracle/oradata/FREE/FREEPDB1/system01.dbf
+/opt/oracle/oradata/FREE/FREEPDB1/undotbs01.dbf
+/opt/oracle/oradata/FREE/FREEPDB1/temp01.dbf
+/opt/oracle/oradata/FREE/sysaux01.dbf
+/opt/oracle/oradata/FREE/redo03.log
+/opt/oracle/oradata/FREE/users01.dbf
+/opt/oracle/oradata/FREE/redo01.log
+/opt/oracle/oradata/FREE/system01.dbf
+/opt/oracle/oradata/FREE/undotbs01.dbf
+/opt/oracle/oradata/FREE/redo02.log
+/opt/oracle/oradata/FREE/.prebuiltdb
+/opt/oracle/oradata/FREE/temp01.dbf
+/opt/oracle/oradata/FREE/pdbseed
+/opt/oracle/oradata/FREE/pdbseed/sysaux01.dbf
+/opt/oracle/oradata/FREE/pdbseed/system01.dbf
+/opt/oracle/oradata/FREE/pdbseed/undotbs01.dbf
+/opt/oracle/oradata/FREE/pdbseed/temp01.dbf
+/opt/oracle/oradata/FREE/control01.ctl
+/opt/oracle/oradata/FREE/control02.ctl
+/opt/oracle/oradata/.FREE.created
+/opt/oracle/oradata/dbconfig
+/opt/oracle/oradata/dbconfig/FREE
+/opt/oracle/oradata/dbconfig/FREE/dbs
+/opt/oracle/oradata/dbconfig/FREE/oratab
+/opt/oracle/oradata/dbconfig/FREE/tnsnames.ora
+/opt/oracle/oradata/dbconfig/FREE/listener.ora
+/opt/oracle/oradata/dbconfig/FREE/sqlnet.ora
+--- whole fs
+8845568	/
+--- README/Dockerfile
+-rw-r--r-- 1 oracle dba  3378 Jul  7 07:20 /opt/oracle/Dockerfile
+-rw-r--r-- 1 oracle dba 21956 Jul  7 07:20 /opt/oracle/README.md
+/opt/oracle/README.md
+/opt/oracle/Dockerfile
+--- os
+Oracle Linux Server release 8.10
+--- version
+Version 23.26.3.0.0
+There are no Interim patches installed in this Oracle Home "/opt/oracle/product/26ai/dbhomeFree".
+
+OPatch succeeded.
+oracle-ai-database-preinstall-26ai-1.0-1.el8.aarch64
+=================== 23.26.4.0
+--- ls -la /opt/oracle
+total 481516
+drwxr-xr-x 1 oracle oinstall      4096 Oct 19 13:31 .
+drwxr-xr-x 1 root   root          4096 Oct 19 13:31 ..
+drwxr-x--- 3 oracle oinstall      4096 Oct 19 13:18 admin
+drwxr-x--- 3 oracle oinstall      4096 Oct 19 13:18 audit
+-rw-r--r-- 1 oracle dba           1165 Oct 15 13:49 blobReader.py
+lrwxrwxrwx 1 oracle oinstall        41 Oct 19 13:11 checkDBStatus.sh -> /opt/oracle/scripts/base/checkDBStatus.sh
+lrwxrwxrwx 1 oracle oinstall        50 Oct 19 13:11 configDataguardPrereqs.sh -> /opt/oracle/scripts/base/configDataguardPrereqs.sh
+lrwxrwxrwx 1 oracle oinstall        38 Oct 19 13:11 configTcps.sh -> /opt/oracle/scripts/base/configTcps.sh
+-rwxr-xr-x 1 oracle dba           1640 Oct 15 13:49 createBlob.sh
+lrwxrwxrwx 1 oracle oinstall        36 Oct 19 13:11 createDB.sh -> /opt/oracle/scripts/base/createDB.sh
+-rwxr-xr-x 1 oracle dba           2918 Oct 15 13:49 createService.sh
+-rwxr-xr-x 1 oracle dba           2126 Oct 15 13:49 dbcaUtils.sh
+lrwxrwxrwx 1 oracle oinstall        43 Oct 19 13:11 decryptPassword.sh -> /opt/oracle/scripts/base/decryptPassword.sh
+lrwxrwxrwx 1 oracle oinstall        37 Oct 19 13:11 managePDB.sh -> /opt/oracle/scripts/base/managePDB.sh
+drwxrwx--- 4 oracle oinstall      4096 Oct 19 13:11 oraInventory
+drwxr-xr-x 2 oracle oinstall      4096 Oct 19 13:15 oradata
+-rw-r--r-- 1 oracle oinstall 492986147 Oct 19 13:24 prebuilt-oradata.tar.gz
+drwxr-xr-x 1 oracle oinstall      4096 Oct 19 13:26 product
+-rwxr-xr-- 1 oracle oinstall        69 Oct 19 13:29 runOracle.sh
+-rwxr-xr-- 1 oracle oinstall        62 Oct 19 13:06 runOracle.sh.orig
+-rwxr-xr-- 1 oracle oinstall        93 Oct 19 13:31 runOracle.sh.sharding
+-rwxr-xr-x 1 oracle dba           3260 Oct 15 13:49 runOracle.sh.truecache
+lrwxrwxrwx 1 oracle oinstall        42 Oct 19 13:11 runUserScripts.sh -> /opt/oracle/scripts/base/runUserScripts.sh
+drwxr-xr-x 1 oracle dba           4096 Oct 19 13:31 scripts
+lrwxrwxrwx 1 oracle oinstall        39 Oct 19 13:11 setPassword.sh -> /opt/oracle/scripts/base/setPassword.sh
+-rwxr-xr-x 1 oracle dba          11519 Oct 15 13:49 setup.sh
+lrwxrwxrwx 1 oracle oinstall        36 Oct 19 13:11 shutDown.sh -> /opt/oracle/scripts/base/shutDown.sh
+-rwxr-xr-x 1 oracle dba           1262 Oct 15 13:49 startPrebuilt.sh
+--- du -sxk top-level /opt/oracle/*
+2888804	/opt/oracle/product
+481436	/opt/oracle/prebuilt-oradata.tar.gz
+728	/opt/oracle/scripts
+108	/opt/oracle/audit
+76	/opt/oracle/oraInventory
+40	/opt/oracle/admin
+12	/opt/oracle/setup.sh
+4	/opt/oracle/startPrebuilt.sh
+4	/opt/oracle/runOracle.sh.truecache
+4	/opt/oracle/runOracle.sh.sharding
+4	/opt/oracle/runOracle.sh.orig
+4	/opt/oracle/runOracle.sh
+4	/opt/oracle/oradata
+4	/opt/oracle/dbcaUtils.sh
+4	/opt/oracle/createService.sh
+4	/opt/oracle/createBlob.sh
+4	/opt/oracle/blobReader.py
+0	/opt/oracle/shutDown.sh
+0	/opt/oracle/setPassword.sh
+0	/opt/oracle/runUserScripts.sh
+0	/opt/oracle/managePDB.sh
+0	/opt/oracle/decryptPassword.sh
+0	/opt/oracle/createDB.sh
+0	/opt/oracle/configTcps.sh
+0	/opt/oracle/configDataguardPrereqs.sh
+0	/opt/oracle/checkDBStatus.sh
+--- du -sxk ORACLE_HOME subdirs >100MB
+541036	/opt/oracle/product/26ai/dbhomeFree/bin
+451628	/opt/oracle/product/26ai/dbhomeFree/lib
+367824	/opt/oracle/product/26ai/dbhomeFree/ctx
+229116	/opt/oracle/product/26ai/dbhomeFree/javavm
+224308	/opt/oracle/product/26ai/dbhomeFree/rdbms
+160352	/opt/oracle/product/26ai/dbhomeFree/jdk
+133212	/opt/oracle/product/26ai/dbhomeFree/sqlcl
+106328	/opt/oracle/product/26ai/dbhomeFree/oracore
+--- dbca templates
+total 8
+drwxr-xr-x 2 oracle oinstall 4096 Oct 19 13:22 .
+drwxr-xr-x 5 oracle oinstall 4096 Oct 19 13:19 ..
+--- oradata
+4	/opt/oracle/oradata
+/opt/oracle/oradata
+--- whole fs
+3883128	/
+--- README/Dockerfile
+ls: cannot access '/opt/oracle/README.md': No such file or directory
+ls: cannot access '/opt/oracle/Dockerfile*': No such file or directory
+--- os
+Oracle Linux Server release 9.8
+--- version
+Version 23.26.4.0.0
+There are no Interim patches installed in this Oracle Home "/opt/oracle/product/26ai/dbhomeFree".
+
+OPatch succeeded.
+oracle-ai-database-preinstall-26ai-1.0-3.el9.aarch64

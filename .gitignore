@@ -21,3 +21,5 @@ compose.override.yml
 .claude/settings.json
 .github/copilot-instructions.md
 !common/config/*.env
+# Throwaway work directories (evidence runs, bind mounts)
+.work/

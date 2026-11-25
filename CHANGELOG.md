@@ -19,6 +19,13 @@ All notable changes to this project are documented here. Format based on
   `topics/forensics/recipes/`) on top of `base26` (26ai Free 23.26.3, CDB `FREE` + `FXPDB1`, port 1576),
   archivelog, minimal supplemental logging, small tablespace `FX_DATA`. May be destroyed and rebuilt at will;
   ships no scenario data - recipes create their evidence at runtime
+- `docs/evidence/free-23-26-4/`: evidence for the Oracle Free 23.26.4.0 image (size, missing DBCA template,
+  `startPrebuilt.sh`, character set, documentation) against 23.26.3.0, pinned by digest; `collect.sh` reproduces
+  it in three phases (registry, static, runtime). Runtime results pending
+
+### Changed
+
+- `make lint-shell` also checks scripts under `docs/`; `.work/` (throwaway work directories) is gitignored
 
 ### Fixed
 

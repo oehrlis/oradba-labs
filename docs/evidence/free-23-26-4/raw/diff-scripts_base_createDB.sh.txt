@@ -1,0 +1,674 @@
+--- scripts-23.26.3.0/scripts_base_createDB.sh	2026-07-07 08:20:46
++++ scripts-23.26.4.0/scripts_base_createDB.sh	2026-10-15 14:49:31
+@@ -1,7 +1,8 @@
+ #!/bin/bash
++# shellcheck disable=SC2086,SC2181
+ # LICENSE UPL 1.0
+ #
+-# Copyright (c) 1982-2024 Oracle and/or its affiliates. All rights reserved.
++# Copyright (c) 1982-2026 Oracle and/or its affiliates. All rights reserved.
+ #
+ # Since: November, 2016
+ # Author: gerald.venzl@oracle.com
+@@ -94,6 +95,7 @@
+   upsert_local_tns_alias "$ORACLE_HOME"/network/admin/tnsnames.ora "FREEPDB1" "FREEPDB1"
+ }
+ 
++
+ function dbSetupSQL {
+   # Remove second control file, fix local_listener, make PDB auto open, enable EM global port
+   # Create externally mapped oracle user for health check
+@@ -114,6 +116,26 @@
+ 
+ }
+ 
++# Ensure the password file used by the new standby instance matches the
++# configured admin secret. DBCA duplicate operations may create their own
++# password file while bootstrapping the standby.
++function syncStandbyPasswordFile() {
++  if [[ "${STANDBY_DB}" != "true" || -z "${ORACLE_PWD}" ]]; then
++    return 0
++  fi
++
++  local password_file="${ORACLE_HOME}/dbs/orapw${ORACLE_SID}"
++  local temporary_file="${password_file}.sync.$$"
++
++  rm -f "${temporary_file}"
++  if ! printf '%s\n' "${ORACLE_PWD}" | orapwd \
++      file="${temporary_file}" force=y format=12.2 >/dev/null 2>&1; then
++    orapwd file="${temporary_file}" password="${ORACLE_PWD}" force=y format=12.2 >/dev/null
++  fi
++  chmod 640 "${temporary_file}"
++  mv -f "${temporary_file}" "${password_file}"
++}
++
+ function enableLoggingSQL {
+ 
+   if [ "$ENABLE_ARCHIVELOG" = "true" ]; then
+@@ -138,22 +160,80 @@
+ 
+ ############## Prepare standby TDE wallet from zip artifact ##############
+ function prepareStandbyTDEWalletFromZip {
+-  TDE_WALLET_ROOT="${TDE_WALLET_ROOT:-${ORACLE_BASE}/oradata/dbconfig/${ORACLE_SID}}"
+-  if ! tde_require_standby_wallet_zip "${STANDBY_TDE_WALLET_ZIP_PATH:-}"; then
++  TDE_WALLET_ROOT="${TDE_WALLET_ROOT:-/opt/oracle/oradata/dbconfig/${ORACLE_SID}/tdewallet}"
++  STANDBY_TDE_SOURCE_ROOT="${STANDBY_TDE_SOURCE_ROOT:-/tmp/primary-tde-source}"
++
++  local standby_wallet_zip="${STANDBY_TDE_WALLET_ZIP_PATH:-}"
++
++  # The operator also sets ORACLE_TDE_SECRET_FILE to the password mount.
++  # Point it to the standby ZIP because the helper validates this variable.
++  ORACLE_TDE_SECRET_FILE="${standby_wallet_zip}"
++  export ORACLE_TDE_SECRET_FILE
++
++  if ! tde_require_standby_wallet_zip "${standby_wallet_zip}"; then
+     exit 1
+   fi
+ 
+-  mkdir -p "${TDE_WALLET_ROOT}"
+-  unzip -oq "${ORACLE_TDE_SECRET_FILE}" -d "${TDE_WALLET_ROOT}"
++  rm -rf "${STANDBY_TDE_SOURCE_ROOT}"
++  mkdir -p "${STANDBY_TDE_SOURCE_ROOT}"
+ 
+-  if ! find "${TDE_WALLET_ROOT}" -maxdepth 3 -type f \( -name "cwallet.sso" -o -name "ewallet.p12" \) | grep -q .; then
+-    echo "ERROR: No wallet files (cwallet.sso/ewallet.p12) found after extracting standby wallet artifact. Exiting..."
++  unzip -oq "${standby_wallet_zip}" -d "${STANDBY_TDE_SOURCE_ROOT}"
++
++  if [[ ! -f "${STANDBY_TDE_SOURCE_ROOT}/tde/ewallet.p12" ]]; then
++    echo "ERROR: Primary TDE wallet not found under ${STANDBY_TDE_SOURCE_ROOT}/tde. Exiting..."
+     exit 1
+   fi
+ 
+-  chmod 700 "${TDE_WALLET_ROOT}" || true
++  find "${STANDBY_TDE_SOURCE_ROOT}" -type d -exec chmod 700 {} \; || true
++  find "${STANDBY_TDE_SOURCE_ROOT}" -type f -exec chmod 600 {} \; || true
++
++  # Keep destination empty for DBCA -tdeWalletRoot / Create_TDE_wallet.
++  # Do not seed or clear WALLET_DIR credentials at the same path.
++  mkdir -p "${TDE_WALLET_ROOT}"
++  rm -rf "${TDE_WALLET_ROOT}/tde"
++
++  export TDE_WALLET_ROOT
++  export STANDBY_TDE_SOURCE_ROOT
++
++  echo "Primary TDE wallet prepared under ${STANDBY_TDE_SOURCE_ROOT}"
++  echo "Standby TDE wallet destination is ${TDE_WALLET_ROOT}"
+ }
+ 
++############## Patch DBCA-generated standby PFILE for TDE ##############
++function patchStandbyTDEPfileWhileDBCARuns {
++  local dbca_pid="$1"
++  local pfile="${ORACLE_HOME}/dbs/init${ORACLE_SID}.ora"
++  local patch_count=0
++
++  echo "Watching DBCA-generated PFILE for TDE configuration: ${pfile}"
++
++  while kill -0 "${dbca_pid}" 2>/dev/null; do
++    if [[ -f "${pfile}" ]] &&
++       grep -qE \
++         '^[[:space:]]*tde_configuration[[:space:]]*=[[:space:]]*KEYSTORE_CONFIGURATION=FILE[[:space:]]*$' \
++         "${pfile}"; then
++
++      sed -i \
++        "s|^\([[:space:]]*tde_configuration[[:space:]]*=[[:space:]]*\)KEYSTORE_CONFIGURATION=FILE[[:space:]]*$|\1'KEYSTORE_CONFIGURATION=FILE'|" \
++        "${pfile}"
++
++      patch_count=$((patch_count + 1))
++      echo "Patched DBCA-generated TDE parameter in ${pfile}; count=${patch_count}"
++    fi
++
++    sleep 0.02
++  done
++
++  # Final pass in case DBCA rewrites the file immediately before exiting.
++  if [[ -f "${pfile}" ]]; then
++    sed -i \
++      "s|^\([[:space:]]*tde_configuration[[:space:]]*=[[:space:]]*\)KEYSTORE_CONFIGURATION=FILE[[:space:]]*$|\1'KEYSTORE_CONFIGURATION=FILE'|" \
++      "${pfile}"
++  fi
++
++  echo "Standby TDE PFILE watcher finished; patches=${patch_count}"
++}
++
+ ############## Configure standby DB TDE parameters deterministically ##############
+ function configureStandbyTDEParameters {
+   sqlplus / as sysdba <<EOF
+@@ -161,7 +241,236 @@
+ ALTER SYSTEM SET wallet_root='${TDE_WALLET_ROOT}' SCOPE=SPFILE SID='*';
+ ALTER SYSTEM SET tde_configuration='KEYSTORE_CONFIGURATION=FILE' SCOPE=BOTH SID='*';
+ EXIT;
++EOF
++}
++
++############## Cross-cluster RMAN auxiliary endpoint rewrite ##############
++# DBCA builds the RMAN auxiliary connect string from the local pod address.
++# On Flannel that is an overlay IP unreachable from the remote primary, so
++# wrap rman and rewrite only that auxiliary endpoint to the operator-supplied
++# external standby host/port. Keep ORACLE_HOSTNAME local for auxiliary startup.
++function installCrossClusterRmanWrapper {
++  local aux_host="$1"
++  local aux_port="$2"
++  local local_port="${3:-1521}"
++  local real_rman="${ORACLE_HOME}/bin/rman"
++  local wrapper_dir real_bin_dir real_bin
++  local local_ip=""
++  local from_ep to_ep
++  local -a local_ips=()
++
++  if [[ -z "${aux_host}" ]] || [[ -z "${aux_port}" ]] || [[ -z "${ORACLE_SID:-}" ]]; then
++    echo "ERROR: installCrossClusterRmanWrapper requires aux host/port and ORACLE_SID."
++    return 1
++  fi
++
++  if [[ ! -x "${real_rman}" ]]; then
++    echo "ERROR: Real RMAN binary not found at ${real_rman}."
++    return 1
++  fi
++
++  if [[ "${ORACLE_HOSTNAME:-}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
++    local_ips+=("${ORACLE_HOSTNAME}")
++  fi
++  local_ip="$(hostname -i 2>/dev/null | awk '{print $1}')"
++  if [[ "${local_ip}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
++    local_ips+=("${local_ip}")
++  fi
++  local_ips+=("127.0.0.1")
++
++  to_ep="${aux_host}:${aux_port}/${ORACLE_SID}"
++  wrapper_dir="$(mktemp -d /tmp/cross-cluster-rman.XXXXXX)"
++  # Oracle RMAN rejects a renamed binary ("Unable to run program <name>").
++  # Keep the real executable basename as exactly "rman".
++  real_bin_dir="${wrapper_dir}/realbin"
++  real_bin="${real_bin_dir}/rman"
++  mkdir -p "${real_bin_dir}"
++
++  # Persist rewrite inputs for the wrapper process. Never log RMAN stdin.
++  {
++    printf 'TO_EP=%s\n' "${to_ep}"
++    printf 'SID=%s\n' "${ORACLE_SID}"
++    printf 'LOCAL_PORT=%s\n' "${local_port}"
++    printf 'REAL_RMAN=%s\n' "${real_bin}"
++    for local_ip in "${local_ips[@]}"; do
++      printf 'FROM_EP=%s\n' "${local_ip}:${local_port}/${ORACLE_SID}"
++    done
++  } > "${wrapper_dir}/rewrite.env"
++  chmod 600 "${wrapper_dir}/rewrite.env"
++
++  # Build a sed script once so the wrapper never logs rewritten stdin.
++  : > "${wrapper_dir}/rewrite.sed"
++  for local_ip in "${local_ips[@]}"; do
++    from_ep="${local_ip}:${local_port}/${ORACLE_SID}"
++    printf 's|%s|%s|g\n' "${from_ep//./\\.}" "${to_ep}" >> "${wrapper_dir}/rewrite.sed"
++  done
++  chmod 600 "${wrapper_dir}/rewrite.sed"
++
++  # Relay must be a real file: `python - <<EOF` would consume stdin and steal
++  # DBCA's RMAN input pipe.
++  cat > "${wrapper_dir}/pty_relay.py" <<'PY'
++import os, pty, re, select, sys, termios
++
++real_rman = sys.argv[1]
++sed_path = sys.argv[2]
++rman_args = sys.argv[3:]
++
++subs = []
++with open(sed_path, "r", encoding="utf-8") as fh:
++    for line in fh:
++        line = line.strip()
++        if not line.startswith("s|") or not line.endswith("|g"):
++            continue
++        body = line[2:-2]
++        sep = body.find("|")
++        if sep < 0:
++            continue
++        pat, repl = body[:sep], body[sep + 1 :]
++        subs.append((re.compile(pat), repl))
++
++def rewrite(data: bytes) -> bytes:
++    if not data or not subs:
++        return data
++    text = data.decode("utf-8", errors="surrogateescape")
++    for cre, repl in subs:
++        text = cre.sub(repl, text)
++    return text.encode("utf-8", errors="surrogateescape")
++
++pid, master = pty.fork()
++if pid == 0:
++    os.execv(real_rman, ["rman", *rman_args])
++
++# Disable PTY echo so DBCA does not see its own RMAN input reflected on
++# stdout (that previously made Duplicate appear to complete in ~50ms).
++try:
++    attrs = termios.tcgetattr(master)
++    attrs[3] = attrs[3] & ~(termios.ECHO | termios.ECHOE | termios.ECHOK | termios.ECHONL)
++    termios.tcsetattr(master, termios.TCSANOW, attrs)
++except termios.error:
++    pass
++
++stdin_fd = sys.stdin.fileno()
++stdout_fd = sys.stdout.fileno()
++stdin_open = True
++buf = b""
++
++try:
++    while True:
++        fds = [master]
++        if stdin_open:
++            fds.append(stdin_fd)
++        readable, _, _ = select.select(fds, [], [], 1.0)
++        if stdin_open and stdin_fd in readable:
++            chunk = os.read(stdin_fd, 4096)
++            if not chunk:
++                stdin_open = False
++                if buf:
++                    os.write(master, rewrite(buf))
++                    buf = b""
++            else:
++                buf += chunk
++                while b"\n" in buf:
++                    line, buf = buf.split(b"\n", 1)
++                    os.write(master, rewrite(line + b"\n"))
++        if master in readable:
++            try:
++                out = os.read(master, 4096)
++            except OSError:
++                out = b""
++            if not out:
++                break
++            os.write(stdout_fd, out)
++    _wpid, status = os.waitpid(pid, 0)
++    if hasattr(os, "waitstatus_to_exitcode"):
++        sys.exit(os.waitstatus_to_exitcode(status))
++    sys.exit(status >> 8)
++except KeyboardInterrupt:
++    try:
++        os.kill(pid, 15)
++    except OSError:
++        pass
++    raise
++PY
++  chmod 755 "${wrapper_dir}/pty_relay.py"
++
++  cat > "${wrapper_dir}/rman" <<'WRAPPER'
++#!/bin/bash
++set -euo pipefail
++WRAPPER_DIR="$(cd "$(dirname "$0")" && pwd)"
++# shellcheck disable=SC1091
++. "${WRAPPER_DIR}/rewrite.env"
++
++rewrite_text() {
++  local text="$1"
++  local from_ep
++  while IFS= read -r from_ep; do
++    [[ -z "${from_ep}" ]] && continue
++    text="${text//${from_ep}/${TO_EP}}"
++  done < <(awk -F= '$1=="FROM_EP" {print substr($0,index($0,"=")+1)}' "${WRAPPER_DIR}/rewrite.env")
++  printf '%s' "${text}"
++}
++
++args=()
++for arg in "$@"; do
++  args+=("$(rewrite_text "${arg}")")
++done
++
++if [[ -t 0 ]]; then
++  exec -a rman "${REAL_RMAN}" "${args[@]}"
++fi
++
++# PTY relay file keeps DBCA stdin available to Python (unlike python - <<EOF).
++PY="${ORACLE_HOME}/python/bin/python3"
++if [[ ! -x "${PY}" ]]; then
++  PY="$(command -v python3 || true)"
++fi
++if [[ -z "${PY}" || ! -x "${PY}" ]]; then
++  echo "ERROR: python3 required for cross-cluster RMAN PTY relay" >&2
++  exit 127
++fi
++exec "${PY}" -u "${WRAPPER_DIR}/pty_relay.py" "${REAL_RMAN}" "${WRAPPER_DIR}/rewrite.sed" "${args[@]}"
++WRAPPER
++  chmod 755 "${wrapper_dir}/rman"
++
++  # DBCA invokes $ORACLE_HOME/bin/rman by absolute path; replace it for this
++  # process tree and restore on exit. Also prepend PATH for any bare lookups.
++  # Use mv so replacement works even if an rman process currently maps the inode.
++  if [[ -e "${real_rman}" ]]; then
++    # If a previous attempt left a shell stub, recover the ELF from known backup.
++    if file "${real_rman}" 2>/dev/null | grep -qi 'ELF'; then
++      mv -f "${real_rman}" "${real_bin}"
++    elif [[ -x "${ORACLE_HOME}/bin/rman.cross-cluster-real" ]]; then
++      mv -f "${ORACLE_HOME}/bin/rman.cross-cluster-real" "${real_bin}"
++      rm -f "${real_rman}"
++    else
++      echo "ERROR: Unable to locate the real RMAN ELF binary."
++      return 1
++    fi
++  fi
++  chmod 755 "${real_bin}"
++
++  cat > "${real_rman}" <<EOF
++#!/bin/bash
++exec "${wrapper_dir}/rman" "\$@"
+ EOF
++  chmod 755 "${real_rman}"
++
++  export PATH="${wrapper_dir}:${PATH}"
++  CROSS_CLUSTER_RMAN_WRAPPER_DIR="${wrapper_dir}"
++  CROSS_CLUSTER_RMAN_REAL_BIN="${real_bin}"
++
++  restoreCrossClusterRmanWrapper() {
++    if [[ -n "${CROSS_CLUSTER_RMAN_REAL_BIN:-}" && -e "${CROSS_CLUSTER_RMAN_REAL_BIN}" ]]; then
++      mv -f "${CROSS_CLUSTER_RMAN_REAL_BIN}" "${ORACLE_HOME}/bin/rman" 2>/dev/null || true
++      chmod 755 "${ORACLE_HOME}/bin/rman" 2>/dev/null || true
++    fi
++    if [[ -n "${CROSS_CLUSTER_RMAN_WRAPPER_DIR:-}" && -d "${CROSS_CLUSTER_RMAN_WRAPPER_DIR}" ]]; then
++      rm -rf "${CROSS_CLUSTER_RMAN_WRAPPER_DIR}" 2>/dev/null || true
++    fi
++  }
++  trap restoreCrossClusterRmanWrapper EXIT
++
++  echo "Cross-cluster RMAN auxiliary rewrite enabled for ${ORACLE_SID} -> ${to_ep}"
+ }
+ 
+ function normalizeStandbyOpenMode {
+@@ -318,6 +627,17 @@
+    exit 1;
+ fi;
+ 
++# Load mounted password files when the entrypoint has not exported them.
++if [[ -z "${ORACLE_PWD:-}" && -r /run/secrets/oracle_pwd ]]; then
++  ORACLE_PWD="$(cat /run/secrets/oracle_pwd)"
++  export ORACLE_PWD
++fi
++
++if [[ -z "${TDE_WALLET_PWD:-}" && -r /run/secrets/tde_wallet_pwd ]]; then
++  TDE_WALLET_PWD="$(cat /run/secrets/tde_wallet_pwd)"
++  export TDE_WALLET_PWD
++fi
++
+ # If wallet is present for database credentials then prepare dbca options to use
+ if [[ -n "${WALLET_DIR}" ]] && [[ -f $WALLET_DIR/ewallet.p12 ]]; then
+   # Oracle Wallet is present
+@@ -371,6 +691,14 @@
+   DBCA_DATAPATCH_OPTIONS="-skipDatapatch"
+ fi
+ 
++# Automatically enable TDE for standby creation when a wallet zip is supplied.
++# This avoids requiring a separate TDE_ENABLED environment variable.
++if [[ "${STANDBY_DB}" == "true" &&
++      -n "${STANDBY_TDE_WALLET_ZIP_PATH:-}" ]]; then
++  TDE_ENABLED="true"
++  export TDE_ENABLED
++fi
++
+ # Clone DB/ Standby DB creation path
+ if [[ "${CLONE_DB}" == "true" ]] || [[ "${STANDBY_DB}" == "true" ]] || [[ "${TRUE_CACHE}" == "true" ]]; then
+   # Reverting umask to original value for clone/standby DB cases
+@@ -385,37 +713,253 @@
+   # Primary database parameters extration
+   PRIMARY_DB_NAME=${PRIMARY_DB_NAME:-$(echo "${PRIMARY_DB_CONN_STR}" | cut -d '/' -f 2)}
+ 
++  # Use the external standby NodePort only for the operator's cross-cluster
++  # flow. In-cluster and non-standby flows retain SVC_HOST/SVC_PORT behavior.
++  DBCA_STANDBY_ENDPOINT_OPTIONS=()
++  DBCA_SOURCE_CONN_OPTIONS=(-primaryDBConnectionString "${PRIMARY_DB_CONN_STR}")
++  if [[ "${CROSS_CLUSTER_STANDBY:-false}" == "true" ]] &&
++    [[ -n "${STANDBY_HOSTNAME:-}" ]] &&
++    [[ "${STANDBY_LISTENER_PORT:-0}" =~ ^[0-9]+$ ]] &&
++    [[ "${STANDBY_LISTENER_PORT:-0}" -gt 0 ]]; then
++    # DBCA requires a hostname for the cross-cluster auxiliary endpoint. An
++    # IP-valued standbyHostName can be corrupted to 0.0.0.10, so convert the
++    # operator-supplied IP to a DNS hostname before passing it to DBCA.
++    DBCA_SOURCE_CONN_OPTIONS=(-remoteDBConnString "${PRIMARY_DB_CONN_STR}")
++    DBCA_STANDBY_HOSTNAME="${STANDBY_HOSTNAME}"
++    if [[ "${DBCA_STANDBY_HOSTNAME}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
++      DBCA_STANDBY_HOSTNAME="${DBCA_STANDBY_HOSTNAME//./-}.nip.io"
++    fi
++    DBCA_STANDBY_ENDPOINT_OPTIONS=(-standbyHostName "${DBCA_STANDBY_HOSTNAME}" -standbyListenerPort "${STANDBY_LISTENER_PORT}")
++  fi
++
+   # Creating the database using the dbca command
+   if [ "${STANDBY_DB}" = "true" ]; then
++      syncStandbyPasswordFile
++      TDE_DBCA_INIT_PARAMS=()
++      TDE_DBCA_DUPLICATE_OPTIONS=()
++      STANDBY_TDE_PATCH_PID=""
++
++      # DBCA derives standby SGA from container memory, but the container's
++      # kernel.shmmax can be lower than that derived value. Keep the default
++      # below the observed shmmax; allow image users to override it explicitly.
++      DBCA_STANDBY_SGA_SIZE="${STANDBY_SGA_SIZE:-8192}"
++      DBCA_STANDBY_PGA_SIZE="${STANDBY_PGA_SIZE:-2048}"
++      DBCA_STANDBY_MEMORY_PARAMS="sga_target=${DBCA_STANDBY_SGA_SIZE}M,pga_aggregate_target=${DBCA_STANDBY_PGA_SIZE}M"
++      DBCA_STANDBY_MEMORY_OPTIONS=(-initParams "${DBCA_STANDBY_MEMORY_PARAMS}")
++
+       if [[ "${TDE_ENABLED}" == "true" ]]; then
+           prepareStandbyTDEWalletFromZip
++
++          if [[ -z "${TDE_WALLET_PWD:-}" ]]; then
++              echo "ERROR: TDE_WALLET_PWD is required for TDE standby duplication. Exiting..."
++              exit 1
++          fi
++
++          if [[ ! -f "${STANDBY_TDE_SOURCE_ROOT}/tde/ewallet.p12" ]]; then
++              echo "ERROR: Primary TDE wallet not found at ${STANDBY_TDE_SOURCE_ROOT}/tde/ewallet.p12. Exiting..."
++              exit 1
++          fi
++
++          TDE_DBCA_INIT_PARAMS=(
++            -initParams
++            "wallet_root=${TDE_WALLET_ROOT},${DBCA_STANDBY_MEMORY_PARAMS}"
++          )
++
++          TDE_DBCA_DUPLICATE_OPTIONS=(
++            -primaryDBTdeWallet
++            "${STANDBY_TDE_SOURCE_ROOT}/tde"
++            -sourceTdeWalletPassword
++            "${TDE_WALLET_PWD}"
++            -tdeWalletRoot
++            "${TDE_WALLET_ROOT}"
++          )
+       fi
++
+       # In operator flow, ORACLE_HOSTNAME can be raw pod IP like 10.244.x.x.
+       # DBCA standby duplicate parses that badly and may generate 0.0.0.10.
+       # Use container hostname only when ORACLE_HOSTNAME is an IP.
+-      if [[ "${ORACLE_HOSTNAME:-}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && [[ -n "${HOSTNAME:-}" ]]; then
+-        export ORACLE_HOSTNAME="${HOSTNAME}"
++      if [[ "${CROSS_CLUSTER_STANDBY:-false}" != "true" ]] &&
++        [[ "${ORACLE_HOSTNAME:-}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] &&
++        [[ -n "${HOSTNAME:-}" ]]; then
++          export ORACLE_HOSTNAME="${HOSTNAME}"
+       fi
++      # DBCA standby duplicate requires the auxiliary hostname to be resolvable.
++      # In Kubernetes, service DNS may not be available immediately when the
++      # database container starts.
++      if [[ -n "${ORACLE_HOSTNAME:-}" ]]; then
++          for i in {1..60}; do
++              if getent hosts "${ORACLE_HOSTNAME}" > /dev/null 2>&1; then
++                  echo "Standby hostname ${ORACLE_HOSTNAME} is resolvable."
++                  break
++              fi
+ 
+-      # Creating standby database
+-      if [[ -n "${ORACLE_PWD:-}" ]]; then
+-        dbca -silent -createDuplicateDB -gdbName "$PRIMARY_DB_NAME" -primaryDBConnectionString "$PRIMARY_DB_CONN_STR" ${DBCA_CRED_OPTIONS} ${DBCA_RECOVERY_CONFIG_OPTIONS} ${DBCA_DATAPATCH_OPTIONS} -sid "$ORACLE_SID" -createAsStandby -createListener LISTENER:"${SVC_PORT}" -datafileDestination $ORACLE_BASE/oradata -useOMF true -dbUniquename "$ORACLE_SID" ORACLE_HOSTNAME="$ORACLE_HOSTNAME" <<< "${ORACLE_PWD}" ||
+-        cat /opt/oracle/cfgtoollogs/dbca/"$ORACLE_SID"/"$ORACLE_SID".log ||
+-        cat /opt/oracle/cfgtoollogs/dbca/"$ORACLE_SID".log
+-      else
+-        dbca -silent -createDuplicateDB -gdbName "$PRIMARY_DB_NAME" -primaryDBConnectionString "$PRIMARY_DB_CONN_STR" ${DBCA_CRED_OPTIONS} ${DBCA_RECOVERY_CONFIG_OPTIONS} ${DBCA_DATAPATCH_OPTIONS} -sid "$ORACLE_SID" -createAsStandby -createListener LISTENER:"${SVC_PORT}" -datafileDestination $ORACLE_BASE/oradata -useOMF true -dbUniquename "$ORACLE_SID" ORACLE_HOSTNAME="$ORACLE_HOSTNAME" ||
+-        cat /opt/oracle/cfgtoollogs/dbca/"$ORACLE_SID"/"$ORACLE_SID".log ||
+-        cat /opt/oracle/cfgtoollogs/dbca/"$ORACLE_SID".log
++              if [[ "${i}" -eq 60 ]]; then
++                  echo "ERROR: Timed out waiting for standby hostname ${ORACLE_HOSTNAME} to resolve. Exiting..."
++                  exit 1
++              fi
++
++              echo "Waiting for standby hostname ${ORACLE_HOSTNAME} to resolve... (${i}/60)"
++              sleep 2
++          done
++      fi
++
++      syncStandbyPasswordFile
++
++      DBCA_ORACLE_HOSTNAME="${ORACLE_HOSTNAME}"
++      DBCA_SVC_HOST="${SVC_HOST}"
++      DBCA_SVC_PORT="${SVC_PORT}"
++      if [[ "${CROSS_CLUSTER_STANDBY:-false}" == "true" ]] &&
++        [[ -n "${STANDBY_HOSTNAME:-}" ]] &&
++        [[ "${STANDBY_LISTENER_PORT:-0}" =~ ^[0-9]+$ ]] &&
++        [[ "${STANDBY_LISTENER_PORT:-0}" -gt 0 ]]; then
++        # Keep ORACLE_HOSTNAME local so auxiliary startup/validation works.
++        # Rewrite only the RMAN auxiliary endpoint to the external standby
++        # address that the remote primary can reach.
++        DBCA_ORACLE_HOSTNAME="${HOSTNAME}"
++        DBCA_SVC_HOST="${DBCA_STANDBY_HOSTNAME}"
++        DBCA_SVC_PORT="${STANDBY_LISTENER_PORT}"
++        installCrossClusterRmanWrapper \
++          "${STANDBY_HOSTNAME}" \
++          "${STANDBY_LISTENER_PORT}" \
++          "${SVC_PORT:-1521}"
++        unset STANDBY_HOSTNAME STANDBY_LISTENER_PORT
+       fi
++
+       if [[ "${TDE_ENABLED}" == "true" ]]; then
++          # TDE standby only: run DBCA in the background so the generated
++          # PFILE can be corrected before each auxiliary instance startup.
++          # DBCA 23.26 still reads the remote SYS password from stdin.
++          # shellcheck disable=SC2086
++          printf '%s\n' "${ORACLE_PWD}" |
++          env -u STANDBY_HOSTNAME -u STANDBY_LISTENER_PORT \
++          SVC_HOST="${DBCA_SVC_HOST}" SVC_PORT="${DBCA_SVC_PORT}" \
++          dbca -silent -createDuplicateDB \
++            -gdbName "$PRIMARY_DB_NAME" \
++            "${DBCA_SOURCE_CONN_OPTIONS[@]}" \
++            -sysPassword "${ORACLE_PWD}" \
++            ${DBCA_RECOVERY_CONFIG_OPTIONS} \
++            ${DBCA_DATAPATCH_OPTIONS} \
++            "${DBCA_STANDBY_ENDPOINT_OPTIONS[@]}" \
++            "${TDE_DBCA_INIT_PARAMS[@]}" \
++            "${TDE_DBCA_DUPLICATE_OPTIONS[@]}" \
++            -sid "$ORACLE_SID" \
++            -createAsStandby \
++            -createListener LISTENER:"${SVC_PORT}" \
++            -datafileDestination "$ORACLE_BASE/oradata" \
++            -useOMF true \
++            -dbUniquename "$ORACLE_SID" \
++            ORACLE_HOSTNAME="$DBCA_ORACLE_HOSTNAME" &
++
++          DBCA_PID=$!
++
++          patchStandbyTDEPfileWhileDBCARuns "${DBCA_PID}" &
++          STANDBY_TDE_PATCH_PID=$!
++
++          if wait "${DBCA_PID}"; then
++              DBCA_RC=0
++          else
++              DBCA_RC=$?
++          fi
++
++          wait "${STANDBY_TDE_PATCH_PID}" || true
++
++          if [[ "${DBCA_RC}" -ne 0 ]]; then
++              cat "/opt/oracle/cfgtoollogs/dbca/${ORACLE_SID}/${ORACLE_SID}.log" ||
++                cat "/opt/oracle/cfgtoollogs/dbca/${ORACLE_SID}.log"
++
++              exit "${DBCA_RC}"
++          fi
++
+           configureStandbyTDEParameters
++          rm -rf "${STANDBY_TDE_SOURCE_ROOT}"
++      else
++          # Existing non-TDE standby flow remains unchanged.
++          if [[ -n "${ORACLE_PWD:-}" ]]; then
++              # shellcheck disable=SC2086
++              if ! env -u STANDBY_HOSTNAME -u STANDBY_LISTENER_PORT \
++                SVC_HOST="${DBCA_SVC_HOST}" SVC_PORT="${DBCA_SVC_PORT}" \
++                dbca -silent -createDuplicateDB \
++                -gdbName "$PRIMARY_DB_NAME" \
++                "${DBCA_SOURCE_CONN_OPTIONS[@]}" \
++                ${DBCA_CRED_OPTIONS} \
++                ${DBCA_RECOVERY_CONFIG_OPTIONS} \
++                ${DBCA_DATAPATCH_OPTIONS} \
++                "${DBCA_STANDBY_ENDPOINT_OPTIONS[@]}" \
++                "${DBCA_STANDBY_MEMORY_OPTIONS[@]}" \
++                -sid "$ORACLE_SID" \
++                -createAsStandby \
++                -createListener LISTENER:"${SVC_PORT}" \
++                -datafileDestination "$ORACLE_BASE/oradata" \
++                -useOMF true \
++                -dbUniquename "$ORACLE_SID" \
++                ORACLE_HOSTNAME="$DBCA_ORACLE_HOSTNAME" \
++                <<< "${ORACLE_PWD}"; then
++
++                  cat "/opt/oracle/cfgtoollogs/dbca/${ORACLE_SID}/${ORACLE_SID}.log" ||
++                    cat "/opt/oracle/cfgtoollogs/dbca/${ORACLE_SID}.log"
++
++                  exit 1
++              fi
++          else
++              # shellcheck disable=SC2086
++              if ! env -u STANDBY_HOSTNAME -u STANDBY_LISTENER_PORT \
++                SVC_HOST="${DBCA_SVC_HOST}" SVC_PORT="${DBCA_SVC_PORT}" \
++                dbca -silent -createDuplicateDB \
++                -gdbName "$PRIMARY_DB_NAME" \
++                "${DBCA_SOURCE_CONN_OPTIONS[@]}" \
++                ${DBCA_CRED_OPTIONS} \
++                ${DBCA_RECOVERY_CONFIG_OPTIONS} \
++                ${DBCA_DATAPATCH_OPTIONS} \
++                "${DBCA_STANDBY_ENDPOINT_OPTIONS[@]}" \
++                "${DBCA_STANDBY_MEMORY_OPTIONS[@]}" \
++                -sid "$ORACLE_SID" \
++                -createAsStandby \
++                -createListener LISTENER:"${SVC_PORT}" \
++                -datafileDestination "$ORACLE_BASE/oradata" \
++                -useOMF true \
++                -dbUniquename "$ORACLE_SID" \
++                ORACLE_HOSTNAME="$DBCA_ORACLE_HOSTNAME"; then
++
++                  cat "/opt/oracle/cfgtoollogs/dbca/${ORACLE_SID}/${ORACLE_SID}.log" ||
++                    cat "/opt/oracle/cfgtoollogs/dbca/${ORACLE_SID}.log"
++
++                  exit 1
++              fi
++          fi
+       fi
++
+       applyStandbyOpenMode
+   elif [ "${CLONE_DB}" = "true" ]; then
+-             # Creating clone database or Duplicate database (No -createAsStandby) after duplicating a primary database; CLONE_DB is set to true here
+-            dbca -silent -createDuplicateDB -gdbName "$ORACLE_SID" -primaryDBConnectionString "$PRIMARY_DB_CONN_STR" ${DBCA_CRED_OPTIONS} ${DBCA_RECOVERY_CONFIG_OPTIONS} ${DBCA_DATAPATCH_OPTIONS} -sid "$ORACLE_SID" -databaseConfigType SINGLE -datafileDestination $ORACLE_BASE/oradata -useOMF true -dbUniquename "$ORACLE_SID" ORACLE_HOSTNAME="$ORACLE_HOSTNAME" ||
+-            cat /opt/oracle/cfgtoollogs/dbca/"$ORACLE_SID"/"$ORACLE_SID".log ||
+-            cat /opt/oracle/cfgtoollogs/dbca/"$ORACLE_SID".log
++    # Creating clone database
++    # Wait until the clone service hostname is resolvable before DBCA starts.
++    for attempt in $(seq 1 60); do
++      if getent hosts "${ORACLE_HOSTNAME}" >/dev/null 2>&1; then
++        break
++      fi
++
++      if [ "${attempt}" -eq 60 ]; then
++        echo "ERROR: Unable to resolve clone hostname ${ORACLE_HOSTNAME}. Exiting..."
++        exit 1
++      fi
++
++      sleep 2
++    done
++
++    printf '%s\n' "${ORACLE_PWD}" |
++    dbca -silent -createDuplicateDB \
++      -gdbName "$ORACLE_SID" \
++      -primaryDBConnectionString "$PRIMARY_DB_CONN_STR" \
++      -sysPassword "${ORACLE_PWD}" \
++      ${DBCA_RECOVERY_CONFIG_OPTIONS} \
++      ${DBCA_DATAPATCH_OPTIONS} \
++      -sid "$ORACLE_SID" \
++      -databaseConfigType SINGLE \
++      -datafileDestination "$ORACLE_BASE/oradata" \
++      -useOMF true \
++      -dbUniquename "$ORACLE_SID" \
++      ORACLE_HOSTNAME="$ORACLE_HOSTNAME" ||
++    cat "/opt/oracle/cfgtoollogs/dbca/${ORACLE_SID}/${ORACLE_SID}.log" ||
++    cat "/opt/oracle/cfgtoollogs/dbca/${ORACLE_SID}.log"
+   elif  [ "$TRUE_CACHE" = "true" ]; then
+       require_primary_sys_auth
+       if [ -n "$TRUE_CACHE_BLOB" ]; then

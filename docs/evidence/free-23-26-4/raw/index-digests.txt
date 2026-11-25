@@ -1,0 +1,12 @@
+Name:      container-registry.oracle.com/database/free:23.26.3.0
+MediaType: application/vnd.oci.image.index.v1+json
+Digest:    sha256:f988b0c04c4c386cd306a2a914c0d7a9702d83acc31b064a28ad8eb6278a8fba
+
+Name:      container-registry.oracle.com/database/free:23.26.4.0
+MediaType: application/vnd.oci.image.index.v1+json
+Digest:    sha256:f5a1791bf5628fd1a97e07584ff5ac5537da5021c23e70f5083f48c8fcd6476e
+
+Name:      container-registry.oracle.com/database/free:latest
+MediaType: application/vnd.oci.image.index.v1+json
+Digest:    sha256:f5a1791bf5628fd1a97e07584ff5ac5537da5021c23e70f5083f48c8fcd6476e
+
