@@ -1,0 +1,145 @@
+# runtime t3: empty bind dir, command runOracle.sh (no startPrebuilt.sh)
+# date: 2026-11-26T09:23:25Z
+# image: container-registry.oracle.com/database/free:23.26.4.0
+# digest: sha256:f5a1791bf5628fd1a97e07584ff5ac5537da5021c23e70f5083f48c8fcd6476e
+# host: Darwin arm64, docker 29.8.2
+# ------------------------------------------------------------
+# command: docker run --pull never -d --name free-diff-t3-232640 --hostname free-diff-t3-232640 -e ORACLE_PWD -v <repo>/.work/free-23-26-4/run-t3-23.26.4.0/oradata:/opt/oracle/oradata -v <repo>/.work/free-23-26-4/run-t3-23.26.4.0/hooks/setup:/opt/oracle/scripts/setup:ro -v <repo>/.work/free-23-26-4/run-t3-23.26.4.0/hooks/startup:/opt/oracle/scripts/startup:ro cmd:exec $ORACLE_BASE/runOracle.sh container-registry.oracle.com/database/free@sha256:f5a1791bf5628fd1a97e07584ff5ac5537da5021c23e70f5083f48c8fcd6476e
+# ORACLE_PWD: random, not logged
+# ------------------------------------------------------------
+RESULT: exited - after 11s
+--- docker inspect State
+Status=exited ExitCode=1 Started=2026-11-26T09:23:26.005486551Z Finished=2026-11-26T09:23:28.04519776Z
+--- docker inspect Cmd / Mounts
+["/bin/bash","-c","exec $ORACLE_BASE/runOracle.sh"] [{"Type":"bind","Source":"<repo>/.work/free-23-26-4/run-t3-23.26.4.0/oradata","Destination":"/opt/oracle/oradata","Mode":"","RW":true,"Propagation":"rprivate"},{"Type":"bind","Source":"<repo>/.work/free-23-26-4/run-t3-23.26.4.0/hooks/setup","Destination":"/opt/oracle/scripts/setup","Mode":"ro","RW":false,"Propagation":"rprivate"},{"Type":"bind","Source":"<repo>/.work/free-23-26-4/run-t3-23.26.4.0/hooks/startup","Destination":"/opt/oracle/scripts/startup","Mode":"ro","RW":false,"Propagation":"rprivate"}]
+--- database facts: container not running, no query
+--- host bind directory (find -maxdepth 2, du -sh)
+.
+  0B	.
+--- marker files in /opt/oracle/oradata
+MARKER-SETUP absent
+MARKER-STARTUP absent
+--- cfgtoollogs (dbca), last 60 lines per log
+### cfgtoollogs/netca/netca_OraDBHome26aiFree-2611269AM2326.log
+
+Parsing command line arguments:
+    Parameter "orahome" = /opt/oracle/product/26ai/dbhomeFree
+    Parameter "instype" = typical
+    Parameter "inscomp" = client,oraclenet,javavm,server,ano
+    Parameter "insprtcl" = tcp
+    Parameter "cfg" = local
+    Parameter "authadp" = NO_VALUE
+    Parameter "responsefile" = /opt/oracle/product/26ai/dbhomeFree/network/install/netca_typ.rsp
+    Parameter "silent" = true
+    Parameter "orahnam" = OraHomeFree
+    Parameter "listenerparameters" = DEFAULT_SERVICE=FREE
+    Parameter "lisport" = 1521
+Done parsing command line arguments.
+Oracle Net Services Configuration:
+Profile configuration complete.
+Listener is using the port provided in the command line:1521
+Oracle Net Listener Startup:
+    Running Listener Control: 
+      /opt/oracle/product/26ai/dbhomeFree/bin/lsnrctl start LISTENER
+    Listener Control complete.
+    Listener started successfully.
+Listener configuration complete.
+Oracle Net Services configuration successful. The exit code is 0
+### cfgtoollogs/netca/netca_configure_out.log
+Netca configuration log
+
+Parsing command line arguments:
+    Parameter "orahome" = /opt/oracle/product/26ai/dbhomeFree
+    Parameter "instype" = typical
+    Parameter "inscomp" = client,oraclenet,javavm,server,ano
+    Parameter "insprtcl" = tcp
+    Parameter "cfg" = local
+    Parameter "authadp" = NO_VALUE
+    Parameter "responsefile" = /opt/oracle/product/26ai/dbhomeFree/network/install/netca_typ.rsp
+    Parameter "silent" = true
+    Parameter "orahnam" = OraHomeFree
+    Parameter "listenerparameters" = DEFAULT_SERVICE=FREE
+    Parameter "lisport" = 1521
+Done parsing command line arguments.
+Oracle Net Services Configuration:
+Profile configuration complete.
+Listener is using the port provided in the command line:1521
+Oracle Net Listener Startup:
+    Running Listener Control: 
+      /opt/oracle/product/26ai/dbhomeFree/bin/lsnrctl start LISTENER
+    Listener Control complete.
+    Listener started successfully.
+Listener configuration complete.
+Oracle Net Services configuration successful. The exit code is 0
+### cfgtoollogs/netca/trace_OraDBHome26aiFree-2611269AM2326.log
+[main] [ 2026-11-26 09:23:26.608 UTC ] [ConfigureListener.isHASRunning:1809]  Is Oracle Restart running: false
+[main] [ 2026-11-26 09:23:26.608 UTC ] [ConfigureListener.listenerExists:450]  Is listener "LISTENER" already exists: false
+[main] [ 2026-11-26 09:23:26.609 UTC ] [ConfigureListener.validateEndPoint:1190]  Validating end-point: TCP:1521
+[main] [ 2026-11-26 09:23:26.609 UTC ] [ClusterUtils.isContainerEnvironment:2032]  Entering method isContainerEnvironment
+[main] [ 2026-11-26 09:23:26.609 UTC ] [OracleHome.isVersion23OrHigher:1672]  isVersion23OrHigher method begin: 
+[main] [ 2026-11-26 09:23:26.609 UTC ] [OracleHome.getVersion:1395]  OracleHome.getVersion called.  Current Version: null
+[main] [ 2026-11-26 09:23:26.610 UTC ] [InventoryUtil.getOUIInvSession:354]  setting OUI READ level to ACCESSLEVEL_READ_LOCKLESS
+[main] [ 2026-11-26 09:23:26.610 UTC ] [OracleHome.getVersion:1409]  Homeinfo /opt/oracle/product/26ai/dbhomeFree,1
+[main] [ 2026-11-26 09:23:26.623 UTC ] [OracleHome.getVersion:1426]  OracleHome.server.getVersion Version: 23.0.0.0.0
+[main] [ 2026-11-26 09:23:26.624 UTC ] [OracleHome.getVersion:1442]  Current Version From Inventory: 23.0.0.0.0
+[main] [ 2026-11-26 09:23:26.624 UTC ] [OracleHome.getVersion:1470]  Current Version from Oraversion -baseVersion: 23.0.0.0.0
+[main] [ 2026-11-26 09:23:26.624 UTC ] [OracleHome.isVersion23OrHigher:1682]  isVersion23OrHigher:true
+[main] [ 2026-11-26 09:23:26.624 UTC ] [UnixSystem.getSystemdContainer:7294]  unixcmd = /usr/bin/systemd-detect-virt --container
+[main] [ 2026-11-26 09:23:26.624 UTC ] [RuntimeExec.traceCmdEnv:604]  Calling Runtime.exec() with the command 
+[main] [ 2026-11-26 09:23:26.624 UTC ] [RuntimeExec.traceCmdEnv:606]  /usr/bin/systemd-detect-virt 
+[main] [ 2026-11-26 09:23:26.624 UTC ] [RuntimeExec.traceCmdEnv:606]  --container 
+[main] [ 2026-11-26 09:23:26.624 UTC ] [RuntimeExec.runCommand:382]  runCommand: Waiting for the process
+[Thread-8] [ 2026-11-26 09:23:26.624 UTC ] [StreamReader.run:66]  In StreamReader.run 
+[Thread-7] [ 2026-11-26 09:23:26.624 UTC ] [StreamReader.run:66]  In StreamReader.run 
+[Thread-7] [ 2026-11-26 09:23:26.626 UTC ] [StreamReader.run:74]  OUTPUT>docker
+[main] [ 2026-11-26 09:23:26.627 UTC ] [RuntimeExec.runCommand:384]  runCommand: process returns 0
+[main] [ 2026-11-26 09:23:26.627 UTC ] [RuntimeExec.runCommand:411]  RunTimeExec: error>
+[main] [ 2026-11-26 09:23:26.628 UTC ] [RuntimeExec.runCommand:437]  Returning from RunTimeExec.runCommand
+[main] [ 2026-11-26 09:23:26.628 UTC ] [UnixSystem.getSystemdContainer:7298]  After execution: ret = 0, out = docker
+[main] [ 2026-11-26 09:23:26.628 UTC ] [ClusterwareInfo.isKubernetesContainer:8282]  isKubernetesContainer : false
+[main] [ 2026-11-26 09:23:26.628 UTC ] [ClusterUtils.isContainerEnvironment:2040]  isContainerEnvironment:false
+[main] [ 2026-11-26 09:23:26.629 UTC ] [ConfigureListener.validateEndPoint:1209]  Address String : (ADDRESS=(PROTOCOL=TCP)(HOST=free-diff-t3-232640)(PORT=1521))
+[main] [ 2026-11-26 09:23:26.631 UTC ] [ConfigureListener.validateEndPoint:1213]  AddressBusy return code : 0
+[main] [ 2026-11-26 09:23:26.631 UTC ] [ConfigureListener.isPortFree:1274]  Checking if port 1521 is free on local machine...
+[main] [ 2026-11-26 09:23:26.631 UTC ] [ConfigureListener.isPortFree:1289]  InetAddress.getByName(127.0.0.1): /127.0.0.1
+[main] [ 2026-11-26 09:23:26.631 UTC ] [ConfigureListener.isPortFree:1291]  Local host IP address: free-diff-t3-232640/172.17.0.2
+[main] [ 2026-11-26 09:23:26.631 UTC ] [ConfigureListener.isPortFree:1293]  Local host name: free-diff-t3-232640
+[main] [ 2026-11-26 09:23:26.631 UTC ] [ConfigureListener.isPortFree:1304]  Address free-diff-t3-232640
+[main] [ 2026-11-26 09:23:26.631 UTC ] [ConfigureListener.isPortFree:1327]  IP Address: free-diff-t3-232640/172.17.0.2, Is IPv6 Address: false
+[main] [ 2026-11-26 09:23:26.631 UTC ] [ConfigureListener.isPortFree:1330]  IP Address: free-diff-t3-232640/172.17.0.2, Is Link-Local Address: false
+[main] [ 2026-11-26 09:23:26.631 UTC ] [ConfigureListener.isPortFree:1355]  Creating ServerSocket on Port:1521, IP Address: free-diff-t3-232640/172.17.0.2
+[main] [ 2026-11-26 09:23:26.634 UTC ] [ConfigureListener.isPortFree:1358]  Created ServerSocket successfully.
+[main] [ 2026-11-26 09:23:26.634 UTC ] [ConfigureListener.isPortFree:1371]  Creating ServerSocket on Port:1521, Local IP Address: /127.0.0.1
+[main] [ 2026-11-26 09:23:26.634 UTC ] [ConfigureListener.isPortFree:1375]  Created ServerSocket successfully.
+[main] [ 2026-11-26 09:23:26.634 UTC ] [ConfigureListener.isPortFree:1381]  Creating ServerSocket on Port:1521
+[main] [ 2026-11-26 09:23:26.634 UTC ] [ConfigureListener.isPortFree:1384]  Created ServerSocket successfully.
+[main] [ 2026-11-26 09:23:26.635 UTC ] [ConfigureListener.isPortFree:1404]  Returning is Port 1521 free: true
+[main] [ 2026-11-26 09:23:26.635 UTC ] [ConfigureListener.validateEndPoint:1247]  Validation...Complete for TCP/TCPS.
+[main] [ 2026-11-26 09:23:26.637 UTC ] [CmdlineArgs.getListenerParameters:1318]  Control parameter loaded: DEFAULT_SERVICE
+[main] [ 2026-11-26 09:23:26.637 UTC ] [ConfigureListener.typicalConfigure:366]  DEFAULT_SERVICE FREE
+[main] [ 2026-11-26 09:23:26.638 UTC ] [ConfigureListener.isPortFree:1274]  Checking if port 1521 is free on local machine...
+[main] [ 2026-11-26 09:23:26.638 UTC ] [ConfigureListener.isPortFree:1289]  InetAddress.getByName(127.0.0.1): /127.0.0.1
+[main] [ 2026-11-26 09:23:26.638 UTC ] [ConfigureListener.isPortFree:1291]  Local host IP address: free-diff-t3-232640/172.17.0.2
+[main] [ 2026-11-26 09:23:26.638 UTC ] [ConfigureListener.isPortFree:1293]  Local host name: free-diff-t3-232640
+[main] [ 2026-11-26 09:23:26.638 UTC ] [ConfigureListener.isPortFree:1304]  Address free-diff-t3-232640
+[main] [ 2026-11-26 09:23:26.638 UTC ] [ConfigureListener.isPortFree:1327]  IP Address: free-diff-t3-232640/172.17.0.2, Is IPv6 Address: false
+[main] [ 2026-11-26 09:23:26.638 UTC ] [ConfigureListener.isPortFree:1330]  IP Address: free-diff-t3-232640/172.17.0.2, Is Link-Local Address: false
+[main] [ 2026-11-26 09:23:26.638 UTC ] [ConfigureListener.isPortFree:1355]  Creating ServerSocket on Port:1521, IP Address: free-diff-t3-232640/172.17.0.2
+[main] [ 2026-11-26 09:23:26.638 UTC ] [ConfigureListener.isPortFree:1358]  Created ServerSocket successfully.
+[main] [ 2026-11-26 09:23:26.638 UTC ] [ConfigureListener.isPortFree:1371]  Creating ServerSocket on Port:1521, Local IP Address: /127.0.0.1
+[main] [ 2026-11-26 09:23:26.638 UTC ] [ConfigureListener.isPortFree:1375]  Created ServerSocket successfully.
+[main] [ 2026-11-26 09:23:26.638 UTC ] [ConfigureListener.isPortFree:1381]  Creating ServerSocket on Port:1521
+[main] [ 2026-11-26 09:23:26.638 UTC ] [ConfigureListener.isPortFree:1384]  Created ServerSocket successfully.
+[main] [ 2026-11-26 09:23:26.638 UTC ] [ConfigureListener.isPortFree:1404]  Returning is Port 1521 free: true
+[main] [ 2026-11-26 09:23:26.696 UTC ] [SilentConfigure.performSilentConfigure:214]  Typical service alias configuration.
+--- docker logs (complete)
+Specify a password to be used for database accounts. Oracle recommends that the password entered should be at least 8 characters in length, contain at least 1 uppercase character, 1 lower case character and 1 digit [0-9]. Note that the same password will be used for SYS, SYSTEM and PDBADMIN accounts:
+Confirm the password:
+Configuring Oracle Listener.
+Listener configuration succeeded.
+Configuring Oracle AI Database FREE.
+[FATAL] [DBT-10508] Invalid template file specified (/opt/oracle/product/26ai/dbhomeFree/assistants/dbca/templates/FREE_Database.dbc).
+   CAUSE: The given template path is not a valid file path or the template file is not accessible in the local file system.
+   ACTION: Verify the presence of the template file (/opt/oracle/product/26ai/dbhomeFree/assistants/dbca/templates/FREE_Database.dbc) and ensure it is accessible.
+
+Database configuration failed. Check logs under '/opt/oracle/cfgtoollogs/dbca'.

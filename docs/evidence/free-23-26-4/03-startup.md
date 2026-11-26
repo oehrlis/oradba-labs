@@ -4,7 +4,7 @@ Claim in the draft: the default command is now `startPrebuilt.sh`. It extracts `
 empty `/opt/oracle/oradata`, including a mounted host directory. `runOracle.sh` then takes the existing-database
 path, so `/opt/oracle/scripts/setup` never runs.
 
-- Date: 2026-11-25 (gate: config + scripts; flight: runtime)
+- Date: 2026-11-25 (gate: config + scripts), 2026-11-26 (runtime, arm64)
 - Images: see `01-size.md` (digests)
 
 ## Image config (gate)
@@ -50,11 +50,31 @@ Extracted with `docker create` + `docker cp`; diffs in `raw/diff-*.txt`, new scr
 | t5 | no bind mount + marker scripts | both: prebuilt DB, only startup runs (documented) | `raw/rt-t5-*.txt` |
 | t6 | no bind mount + failing startup SQL | 23.26.3: container keeps running. 23.26.4: container exits | `raw/rt-t6-*.txt` |
 
+### Runtime results
+
+Marker scripts write `MARKER-SETUP` / `MARKER-STARTUP` into `/opt/oracle/oradata` and print a line to the log.
+
+<!-- markdownlint-disable MD013 MD060 -->
+| Test | Image | Ready after | Setup marker | Startup marker | Container | Note |
+| --- | --- | --- | --- | --- | --- | --- |
+| t1 | 23.26.3.0 | 112 s | present | present | running | DBCA from template |
+| t1 | 23.26.4.0 | 31 s | absent | present | running | "Expanding prebuilt database files.", `FREE/.prebuiltdb` in the bind dir |
+| t5 | 23.26.3.0 | 10 s | absent | present | running | prebuilt DB, no bind mount |
+| t5 | 23.26.4.0 | 21 s | absent | present | running | prebuilt DB extracted at start |
+| t6 | 23.26.3.0 | 71 s | - | - | running, exit 0 | ORA-00942 in `01_fail.sql`, logged, start continues |
+| t6 | 23.26.4.0 | 81 s | - | - | exited, exit 1 | same ORA-00942, container stops 18 s after start |
+<!-- markdownlint-restore -->
+
+t6 on 23.26.4.0 (`raw/rt-t6-23.26.4.0.txt`, end of `docker logs`): the log shows `DATABASE IS READY TO USE!`, the
+failing script and `DONE: Executing user defined scripts`, then the container exits with code 1. Nothing in the
+log says why the container stopped.
+
 ## Result
 
-- Default command `startPrebuilt.sh`, extraction into an empty (also mounted) directory: **confirmed** (config and
-  script). Runtime confirmation: t1
-- Setup scripts never run on 23.26.4.0 with the default command: **confirmed by code reading**, runtime: **open** (t1)
+- Default command `startPrebuilt.sh`, extraction into an empty (also mounted) directory: **confirmed** (config,
+  script and t1)
+- Setup scripts never run on 23.26.4.0 with the default command: **confirmed** (t1). The documented prebuilt path
+  (t5) behaves the same in both images
 - `README.md` / `Dockerfile` missing: **confirmed**
-- New, not in the draft: a failing startup script stops the container in 23.26.4.0 - **confirmed by code
-  reading**, runtime: **open** (t6). This matters for the labs if setup moves to startup hooks
+- New, not in the draft: a failing startup script stops the container in 23.26.4.0 - **confirmed** (t6). This
+  matters for the labs if setup moves to startup hooks: every hook must end with exit 0, also on a restart

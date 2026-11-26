@@ -1,0 +1,112 @@
+# runtime t2: empty bind dir, ORACLE_CHARACTERSET=WE8MSWIN1252
+# date: 2026-11-26T09:26:31Z
+# image: container-registry.oracle.com/database/free:23.26.4.0
+# digest: sha256:f5a1791bf5628fd1a97e07584ff5ac5537da5021c23e70f5083f48c8fcd6476e
+# host: Darwin arm64, docker 29.8.2
+# ------------------------------------------------------------
+# command: docker run --pull never -d --name free-diff-t2-232640 --hostname free-diff-t2-232640 -e ORACLE_PWD -v <repo>/.work/free-23-26-4/run-t2-23.26.4.0/oradata:/opt/oracle/oradata ORACLE_CHARACTERSET=WE8MSWIN1252 container-registry.oracle.com/database/free@sha256:f5a1791bf5628fd1a97e07584ff5ac5537da5021c23e70f5083f48c8fcd6476e
+# ORACLE_PWD: random, not logged
+# ------------------------------------------------------------
+RESULT: ready - after 31s
+--- docker inspect State
+Status=running ExitCode=0 Started=2026-11-26T09:26:31.702922595Z Finished=0001-01-01T00:00:00Z
+--- docker inspect Cmd / Mounts
+["/bin/bash","-c","exec $ORACLE_BASE/startPrebuilt.sh"] [{"Type":"bind","Source":"<repo>/.work/free-23-26-4/run-t2-23.26.4.0/oradata","Destination":"/opt/oracle/oradata","Mode":"","RW":true,"Propagation":"rprivate"}]
+--- database facts (sqlplus / as sysdba, SID FREE)
+
+BANNER_FULL
+------------------------------------------------------------------------------------------
+Oracle AI Database 26ai Free Release 23.26.4.0.0 - Develop, Learn, and Run for Free
+Version 23.26.4.0.0
+
+
+NAME		     OPEN_MODE
+-------------------- ----------
+PDB$SEED	     READ ONLY
+FREEPDB1	     READ WRITE
+--- CDB$ROOT nls_database_parameters
+
+PARAMETER															 VALUE
+-------------------------------------------------------------------------------------------------------------------------------- ------------------------------
+NLS_NCHAR_CHARACTERSET														 AL16UTF16
+NLS_CHARACTERSET														 AL32UTF8
+--- FREEPDB1 nls_database_parameters
+
+PARAMETER															 VALUE
+-------------------------------------------------------------------------------------------------------------------------------- ------------------------------
+NLS_NCHAR_CHARACTERSET														 AL16UTF16
+NLS_CHARACTERSET														 WE8MSWIN1252
+--- host bind directory (find -maxdepth 2, du -sh)
+.
+./.FREE.created
+./FREE
+./FREE/.prebuiltdb
+./FREE/FREEPDB1
+./FREE/control01.ctl
+./FREE/control02.ctl
+./FREE/pdbseed
+./FREE/redo01.log
+./FREE/redo02.log
+./FREE/redo03.log
+./FREE/sysaux01.dbf
+./FREE/system01.dbf
+./FREE/temp01.dbf
+./FREE/undotbs01.dbf
+./FREE/users01.dbf
+./dbconfig
+./dbconfig/FREE
+4.2G	.
+--- marker files in /opt/oracle/oradata
+MARKER-SETUP absent
+MARKER-STARTUP absent
+--- cfgtoollogs (dbca), last 60 lines per log
+(no cfgtoollogs)
+--- docker logs (complete)
+Expanding prebuilt database files.
+Starting Oracle Net Listener.
+Oracle Net Listener started.
+Starting Oracle AI Database instance FREE.
+Oracle AI Database instance FREE started.
+
+Converting FREEPDB1 character set to WE8MSWIN1252.
+The Oracle base remains unchanged with value /opt/oracle
+
+SQL*Plus: Release 23.26.4.0.0 - Production on Thu Nov 26 09:26:59 2026
+Version 23.26.4.0.0
+
+Copyright (c) 1982, 2026, Oracle.  All rights reserved.
+
+
+Connected to:
+Oracle AI Database 26ai Free Release 23.26.4.0.0 - Develop, Learn, and Run for Free
+Version 23.26.4.0.0
+
+SQL> 
+User altered.
+
+SQL> 
+User altered.
+
+SQL> 
+Session altered.
+
+SQL> 
+User altered.
+
+SQL> Disconnected from Oracle AI Database 26ai Free Release 23.26.4.0.0 - Develop, Learn, and Run for Free
+Version 23.26.4.0.0
+The Oracle base remains unchanged with value /opt/oracle
+#########################
+DATABASE IS READY TO USE!
+#########################
+The following output is now a tail of the alert.log:
+Completed: Pluggable database FREEPDB1 closed services=None
+Completed: ALTER PLUGGABLE DATABASE "FREEPDB1" CLOSE IMMEDIATE
+ALTER PLUGGABLE DATABASE "FREEPDB1" OPEN READ WRITE
+FREEPDB1(3):Autotune of undo retention is turned on. 
+2026-11-26T09:26:59.663271+00:00
+FREEPDB1(3):Opening pdb with Resource Manager plan: DEFAULT_PLAN
+Completed: Pluggable database FREEPDB1 opened read write 
+Completed: ALTER PLUGGABLE DATABASE "FREEPDB1" OPEN READ WRITE
+ALTER PLUGGABLE DATABASE "FREEPDB1" SAVE STATE
+Completed: ALTER PLUGGABLE DATABASE "FREEPDB1" SAVE STATE

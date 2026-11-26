@@ -1,0 +1,123 @@
+# runtime t1: empty bind dir, setup+startup markers
+# date: 2026-11-26T09:24:08Z
+# image: container-registry.oracle.com/database/free:23.26.4.0
+# digest: sha256:f5a1791bf5628fd1a97e07584ff5ac5537da5021c23e70f5083f48c8fcd6476e
+# host: Darwin arm64, docker 29.8.2
+# ------------------------------------------------------------
+# command: docker run --pull never -d --name free-diff-t1-232640 --hostname free-diff-t1-232640 -e ORACLE_PWD -v <repo>/.work/free-23-26-4/run-t1-23.26.4.0/oradata:/opt/oracle/oradata -v <repo>/.work/free-23-26-4/run-t1-23.26.4.0/hooks/setup:/opt/oracle/scripts/setup:ro -v <repo>/.work/free-23-26-4/run-t1-23.26.4.0/hooks/startup:/opt/oracle/scripts/startup:ro  container-registry.oracle.com/database/free@sha256:f5a1791bf5628fd1a97e07584ff5ac5537da5021c23e70f5083f48c8fcd6476e
+# ORACLE_PWD: random, not logged
+# ------------------------------------------------------------
+RESULT: ready startup-marker:found after 30s
+--- docker inspect State
+Status=running ExitCode=0 Started=2026-11-26T09:24:08.239655667Z Finished=0001-01-01T00:00:00Z
+--- docker inspect Cmd / Mounts
+["/bin/bash","-c","exec $ORACLE_BASE/startPrebuilt.sh"] [{"Type":"bind","Source":"<repo>/.work/free-23-26-4/run-t1-23.26.4.0/oradata","Destination":"/opt/oracle/oradata","Mode":"","RW":true,"Propagation":"rprivate"},{"Type":"bind","Source":"<repo>/.work/free-23-26-4/run-t1-23.26.4.0/hooks/setup","Destination":"/opt/oracle/scripts/setup","Mode":"ro","RW":false,"Propagation":"rprivate"},{"Type":"bind","Source":"<repo>/.work/free-23-26-4/run-t1-23.26.4.0/hooks/startup","Destination":"/opt/oracle/scripts/startup","Mode":"ro","RW":false,"Propagation":"rprivate"}]
+--- database facts (sqlplus / as sysdba, SID FREE)
+
+BANNER_FULL
+------------------------------------------------------------------------------------------
+Oracle AI Database 26ai Free Release 23.26.4.0.0 - Develop, Learn, and Run for Free
+Version 23.26.4.0.0
+
+
+NAME		     OPEN_MODE
+-------------------- ----------
+PDB$SEED	     READ ONLY
+FREEPDB1	     READ WRITE
+--- CDB$ROOT nls_database_parameters
+
+PARAMETER															 VALUE
+-------------------------------------------------------------------------------------------------------------------------------- ------------------------------
+NLS_NCHAR_CHARACTERSET														 AL16UTF16
+NLS_CHARACTERSET														 AL32UTF8
+--- FREEPDB1 nls_database_parameters
+
+PARAMETER															 VALUE
+-------------------------------------------------------------------------------------------------------------------------------- ------------------------------
+NLS_NCHAR_CHARACTERSET														 AL16UTF16
+NLS_CHARACTERSET														 AL32UTF8
+--- host bind directory (find -maxdepth 2, du -sh)
+.
+./.FREE.created
+./FREE
+./FREE/.prebuiltdb
+./FREE/FREEPDB1
+./FREE/control01.ctl
+./FREE/control02.ctl
+./FREE/pdbseed
+./FREE/redo01.log
+./FREE/redo02.log
+./FREE/redo03.log
+./FREE/sysaux01.dbf
+./FREE/system01.dbf
+./FREE/temp01.dbf
+./FREE/undotbs01.dbf
+./FREE/users01.dbf
+./MARKER-STARTUP
+./dbconfig
+./dbconfig/FREE
+4.1G	.
+--- marker files in /opt/oracle/oradata
+MARKER-SETUP absent
+MARKER-STARTUP present
+--- cfgtoollogs (dbca), last 60 lines per log
+(no cfgtoollogs)
+--- docker logs (complete)
+Expanding prebuilt database files.
+Starting Oracle Net Listener.
+Oracle Net Listener started.
+Starting Oracle AI Database instance FREE.
+Oracle AI Database instance FREE started.
+
+The Oracle base remains unchanged with value /opt/oracle
+
+SQL*Plus: Release 23.26.4.0.0 - Production on Thu Nov 26 09:24:31 2026
+Version 23.26.4.0.0
+
+Copyright (c) 1982, 2026, Oracle.  All rights reserved.
+
+
+Connected to:
+Oracle AI Database 26ai Free Release 23.26.4.0.0 - Develop, Learn, and Run for Free
+Version 23.26.4.0.0
+
+SQL> 
+User altered.
+
+SQL> 
+User altered.
+
+SQL> 
+Session altered.
+
+SQL> 
+User altered.
+
+SQL> Disconnected from Oracle AI Database 26ai Free Release 23.26.4.0.0 - Develop, Learn, and Run for Free
+Version 23.26.4.0.0
+The Oracle base remains unchanged with value /opt/oracle
+#########################
+DATABASE IS READY TO USE!
+#########################
+
+Executing user defined scripts
+/opt/oracle/scripts/base/runUserScripts.sh: running /opt/oracle/scripts/startup/01_marker.sh
+MARKER-STARTUP ran 2026-11-26T09:24:32Z
+
+DONE: Executing user defined scripts
+
+The following output is now a tail of the alert.log:
+2026-11-26T09:24:32.157683+00:00
+===========================================================
+Dumping current patch information
+===========================================================
+No patches have been applied
+===========================================================
+2026-11-26T09:24:32.160524+00:00
+FREEPDB1(3):TABLE AUDSYS.AUD$UNIFIED: ADDED INTERVAL PARTITION SYS_P504 (4532) VALUES LESS THAN (TIMESTAMP' 2026-11-27 00:00:00')
+2026-11-26T09:24:32.241928+00:00
+FREEPDB1(3):Resize operation completed for file# 13, fname /opt/oracle/oradata/FREE/FREEPDB1/sysaux01.dbf, old size 409600K, new size 419840K
+2026-11-26T09:24:32.786313+00:00
+TABLE SYS.WRP$_REPORTS: ADDED AUTOLIST FRAGMENT SYS_P421 (2) VALUES (( 1519115872, TO_DATE(' 2026-11-23 00:00:00', 'syyyy-mm-dd hh24:mi:ss', 'nls_calendar=gregorian') ))
+TABLE SYS.WRP$_REPORTS_DETAILS: ADDED AUTOLIST FRAGMENT SYS_P422 (2) VALUES (( 1519115872, TO_DATE(' 2026-11-23 00:00:00', 'syyyy-mm-dd hh24:mi:ss', 'nls_calendar=gregorian') ))
+TABLE SYS.WRP$_REPORTS_TIME_BANDS: ADDED AUTOLIST FRAGMENT SYS_P425 (2) VALUES (( 1519115872, TO_DATE(' 2026-11-23 00:00:00', 'syyyy-mm-dd hh24:mi:ss', 'nls_calendar=gregorian') ))

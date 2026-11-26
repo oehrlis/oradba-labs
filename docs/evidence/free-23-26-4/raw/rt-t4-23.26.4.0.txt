@@ -1,0 +1,44 @@
+# runtime t4: empty bind dir, ORACLE_SID=LABSID
+# date: 2026-11-26T09:23:36Z
+# image: container-registry.oracle.com/database/free:23.26.4.0
+# digest: sha256:f5a1791bf5628fd1a97e07584ff5ac5537da5021c23e70f5083f48c8fcd6476e
+# host: Darwin arm64, docker 29.8.2
+# ------------------------------------------------------------
+# command: docker run --pull never -d --name free-diff-t4-232640 --hostname free-diff-t4-232640 -e ORACLE_PWD -v <repo>/.work/free-23-26-4/run-t4-23.26.4.0/oradata:/opt/oracle/oradata -v <repo>/.work/free-23-26-4/run-t4-23.26.4.0/hooks/setup:/opt/oracle/scripts/setup:ro -v <repo>/.work/free-23-26-4/run-t4-23.26.4.0/hooks/startup:/opt/oracle/scripts/startup:ro ORACLE_SID=LABSID container-registry.oracle.com/database/free@sha256:f5a1791bf5628fd1a97e07584ff5ac5537da5021c23e70f5083f48c8fcd6476e
+# ORACLE_PWD: random, not logged
+# ------------------------------------------------------------
+RESULT: exited - after 31s
+--- docker inspect State
+Status=exited ExitCode=1 Started=2026-11-26T09:23:36.981869375Z Finished=2026-11-26T09:23:57.836639593Z
+--- docker inspect Cmd / Mounts
+["/bin/bash","-c","exec $ORACLE_BASE/startPrebuilt.sh"] [{"Type":"bind","Source":"<repo>/.work/free-23-26-4/run-t4-23.26.4.0/oradata","Destination":"/opt/oracle/oradata","Mode":"","RW":true,"Propagation":"rprivate"},{"Type":"bind","Source":"<repo>/.work/free-23-26-4/run-t4-23.26.4.0/hooks/setup","Destination":"/opt/oracle/scripts/setup","Mode":"ro","RW":false,"Propagation":"rprivate"},{"Type":"bind","Source":"<repo>/.work/free-23-26-4/run-t4-23.26.4.0/hooks/startup","Destination":"/opt/oracle/scripts/startup","Mode":"ro","RW":false,"Propagation":"rprivate"}]
+--- database facts: container not running, no query
+--- host bind directory (find -maxdepth 2, du -sh)
+.
+./.FREE.created
+./FREE
+./FREE/.prebuiltdb
+./FREE/FREEPDB1
+./FREE/control01.ctl
+./FREE/control02.ctl
+./FREE/pdbseed
+./FREE/redo01.log
+./FREE/redo02.log
+./FREE/redo03.log
+./FREE/sysaux01.dbf
+./FREE/system01.dbf
+./FREE/temp01.dbf
+./FREE/undotbs01.dbf
+./FREE/users01.dbf
+./dbconfig
+./dbconfig/FREE
+4.0G	.
+--- marker files in /opt/oracle/oradata
+MARKER-SETUP absent
+MARKER-STARTUP absent
+--- cfgtoollogs (dbca), last 60 lines per log
+(no cfgtoollogs)
+--- docker logs (complete)
+Expanding prebuilt database files.
+/opt/oracle/scripts/base/runOracle.sh.orig: line 435: source: /opt/oracle/: is a directory
+Response file template  not found in /opt/oracle or /opt/oracle/scripts/base.

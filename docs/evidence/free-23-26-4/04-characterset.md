@@ -3,7 +3,7 @@
 Claim in the draft: the documented way to use another character set (a new empty directory with
 `ORACLE_CHARACTERSET`) no longer works.
 
-- Date: 2026-11-25 (gate: code; flight: runtime)
+- Date: 2026-11-25 (gate: code), 2026-11-26 (runtime, arm64)
 - Images: see `01-size.md` (digests)
 
 ## Code (gate)
@@ -34,12 +34,25 @@ both directions: no fresh database is created, and the variable does take effect
 | t2 | 23.26.3.0, empty bind dir, `ORACLE_CHARACTERSET=WE8MSWIN1252` | DBCA, CDB and PDB `WE8MSWIN1252` | `raw/rt-t2-23.26.3.0.txt` |
 | t2 | 23.26.4.0, same | extraction, CDB `AL32UTF8`; PDB converted or start fails | `raw/rt-t2-23.26.4.0.txt` |
 
-Assumption (to be checked in t2): `WE8MSWIN1252` is not a superset of `AL32UTF8`; the internal conversion may
-fail (ORA-12712) and then stop the container.
+Assumption before t2: `WE8MSWIN1252` is not a superset of `AL32UTF8`; the internal conversion may fail
+(ORA-12712) and then stop the container. **Refuted** by t2: the conversion of the freshly extracted `FREEPDB1`
+succeeded.
+
+### Runtime results (`nls_database_parameters`)
+
+| Image | Ready after | `CDB$ROOT` | `FREEPDB1` |
+| --- | --- | --- | --- |
+| 23.26.3.0 | 143 s | `WE8MSWIN1252` | `WE8MSWIN1252` |
+| 23.26.4.0 | 31 s | `AL32UTF8` | `WE8MSWIN1252` |
+
+23.26.4.0 log (`raw/rt-t2-23.26.4.0.txt`): `Expanding prebuilt database files.`, then
+`Converting FREEPDB1 character set to WE8MSWIN1252.`; the alert log tail shows `FREEPDB1` closed, opened and
+`SAVE STATE`.
 
 ## Result
 
-- "No longer works": **open** - the documented mechanism (new database with this character set) is gone
-  (confirmed by code reading), but there is a replacement (PDB-only conversion) that is not documented. The result
-  depends on t2
+- "No longer works": **partly confirmed** (t2). An empty directory with `ORACLE_CHARACTERSET` no longer creates a
+  database with that character set; `CDB$ROOT` stays `AL32UTF8`. The undocumented replacement converts only
+  `FREEPDB1`, and it works for `WE8MSWIN1252` on the prebuilt PDB. Not tested: other character sets, a second
+  start with a different value, PDBs with application data
 - Registry documentation and code disagree on `ORACLE_CHARACTERSET`: **confirmed** (quote + code)

@@ -25,11 +25,14 @@ Nur offene Tasks. Erledigtes steht im CHANGELOG, in `docs/architecture.md` und i
     GB und Seed-Dateien 0.39 GB komprimiert - die Vermutung "1.6 GB = Seed" ist widerlegt
   - Fuer den Entscheid: Startup-Hooks auf der Prebuilt-DB muessen idempotent sein **und** fehlerfrei enden (sonst
     stoppt der Container). Ein anderer Zeichensatz (z.B. dict-Labs) geht nur auf PDB-Ebene, die CDB bleibt AL32UTF8
-- [ ] Laufzeit-Tests Free 23.26.4 offline starten (Flieger, Stefan): `caffeinate -dims
-  docs/evidence/free-23-26-4/collect.sh --phase runtime --yes`, Strom + Deckel offen, ca. 1-2 h [P1]
-- [ ] Free 23.26.4: `raw/` auswerten, Tabelle belegt/widerlegt/offen in `docs/evidence/free-23-26-4/README.md`
-  nachfuehren, `mail-draft.md` schreiben (oder Empfehlung "keine Mail"/Doku-Rueckmeldung), dann Entscheid oben
-  [P1]
+  - Stand 2026-11-26 (Laufzeit-Tests t1-t6, arm64, alle 10 Laeufe durch): alles aus dem Gate bestaetigt.
+    Leeres Bind-Verzeichnis: 23.26.4 entpackt in 31 s, nur `startup/` laeuft (23.26.3: dbca 112 s, `setup/` +
+    `startup/`). `ORACLE_CHARACTERSET=WE8MSWIN1252`: CDB AL32UTF8, nur `FREEPDB1` konvertiert - geht, kein
+    ORA-12712. Fehlerhaftes Startup-SQL: 23.26.4 Exit 1 ohne Begruendung im Log, 23.26.3 laeuft weiter.
+    `runOracle.sh` direkt: DBT-10508. **Neu:** `ORACLE_SID` != FREE startet gar nicht (`RELINK_BINARY_FILE` und
+    `CONFIG_RSP` im Image nicht gesetzt, Abbruch vor dbca) - eigene SID gibt es auf 23.26.4 nicht
+- [ ] Mail Free 23.26.4 an Gerald Venzl / Martin Bach: `docs/evidence/free-23-26-4/mail-draft.md` reviewen,
+  UKOUG-Satz ergaenzen, nach dem Push des Evidenz-Commits senden (der Link zeigt auf GitHub) [P2]
 
 ## Wartet
 

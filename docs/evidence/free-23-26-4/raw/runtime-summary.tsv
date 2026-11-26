@@ -1,0 +1,11 @@
+test	image	outcome	seconds	description
+t5	23.26.3.0	ready startup-marker:found	10	no bind mount, setup+startup markers
+t5	23.26.4.0	ready startup-marker:found	21	no bind mount, setup+startup markers
+t6	23.26.3.0	ready startup-fail:found,state:running/0	71	no bind mount, failing startup SQL
+t6	23.26.4.0	ready startup-fail:found,state:exited/1	81	no bind mount, failing startup SQL
+t3	23.26.4.0	exited -	11	empty bind dir, command runOracle.sh (no startPrebuilt.sh)
+t4	23.26.4.0	exited -	31	empty bind dir, ORACLE_SID=LABSID
+t1	23.26.4.0	ready startup-marker:found	31	empty bind dir, setup+startup markers
+t1	23.26.3.0	ready startup-marker:found	112	empty bind dir, setup+startup markers
+t2	23.26.4.0	ready -	31	empty bind dir, ORACLE_CHARACTERSET=WE8MSWIN1252
+t2	23.26.3.0	ready -	143	empty bind dir, ORACLE_CHARACTERSET=WE8MSWIN1252

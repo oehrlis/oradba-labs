@@ -1,0 +1,742 @@
+# runtime t2: empty bind dir, ORACLE_CHARACTERSET=WE8MSWIN1252
+# date: 2026-11-26T09:27:02Z
+# image: container-registry.oracle.com/database/free:23.26.3.0
+# digest: sha256:f988b0c04c4c386cd306a2a914c0d7a9702d83acc31b064a28ad8eb6278a8fba
+# host: Darwin arm64, docker 29.8.2
+# ------------------------------------------------------------
+# command: docker run --pull never -d --name free-diff-t2-232630 --hostname free-diff-t2-232630 -e ORACLE_PWD -v <repo>/.work/free-23-26-4/run-t2-23.26.3.0/oradata:/opt/oracle/oradata ORACLE_CHARACTERSET=WE8MSWIN1252 container-registry.oracle.com/database/free@sha256:f988b0c04c4c386cd306a2a914c0d7a9702d83acc31b064a28ad8eb6278a8fba
+# ORACLE_PWD: random, not logged
+# ------------------------------------------------------------
+RESULT: ready - after 142s
+--- docker inspect State
+Status=running ExitCode=0 Started=2026-11-26T09:27:02.910276054Z Finished=0001-01-01T00:00:00Z
+--- docker inspect Cmd / Mounts
+["/bin/bash","-c","$SCRIPT_BASE_DIR/$RUN_FILE"] [{"Type":"bind","Source":"<repo>/.work/free-23-26-4/run-t2-23.26.3.0/oradata","Destination":"/opt/oracle/oradata","Mode":"","RW":true,"Propagation":"rprivate"}]
+--- database facts (sqlplus / as sysdba, SID FREE)
+
+BANNER_FULL
+------------------------------------------------------------------------------------------
+Oracle AI Database 26ai Free Release 23.26.3.0.0 - Develop, Learn, and Run for Free
+Version 23.26.3.0.0
+
+
+NAME		     OPEN_MODE
+-------------------- ----------
+PDB$SEED	     READ ONLY
+FREEPDB1	     READ WRITE
+--- CDB$ROOT nls_database_parameters
+
+PARAMETER															 VALUE
+-------------------------------------------------------------------------------------------------------------------------------- ------------------------------
+NLS_NCHAR_CHARACTERSET														 AL16UTF16
+NLS_CHARACTERSET														 WE8MSWIN1252
+--- FREEPDB1 nls_database_parameters
+
+PARAMETER															 VALUE
+-------------------------------------------------------------------------------------------------------------------------------- ------------------------------
+NLS_NCHAR_CHARACTERSET														 AL16UTF16
+NLS_CHARACTERSET														 WE8MSWIN1252
+--- host bind directory (find -maxdepth 2, du -sh)
+.
+./.FREE.created
+./FREE
+./FREE/FREEPDB1
+./FREE/control01.ctl
+./FREE/control02.ctl
+./FREE/pdbseed
+./FREE/redo01.log
+./FREE/redo02.log
+./FREE/redo03.log
+./FREE/sysaux01.dbf
+./FREE/system01.dbf
+./FREE/temp01.dbf
+./FREE/undotbs01.dbf
+./FREE/users01.dbf
+./dbconfig
+./dbconfig/FREE
+4.2G	.
+--- marker files in /opt/oracle/oradata
+MARKER-SETUP absent
+MARKER-STARTUP absent
+--- cfgtoollogs (dbca), last 60 lines per log
+### cfgtoollogs/dbca/FREE/CloneRmanRestore.log
+ORACLE instance started.
+Total System Global Area 1603392144 bytes
+Fixed Size		    5026448 bytes
+Variable Size		  402653184 bytes
+Database Buffers	 1191182336 bytes
+Redo Buffers		    4530176 bytes
+Database mounted.
+/opt/oracle/oradata/FREE/sysaux01.dbf
+/opt/oracle/oradata/FREE/system01.dbf
+/opt/oracle/oradata/FREE/undotbs01.dbf
+/opt/oracle/oradata/FREE/users01.dbf
+/opt/oracle/oradata/FREE/pdbseed/sysaux01.dbf
+/opt/oracle/oradata/FREE/pdbseed/system01.dbf
+/opt/oracle/oradata/FREE/pdbseed/undotbs01.dbf
+### cfgtoollogs/dbca/FREE/FREE.log
+[ 2026-11-26 09:27:06.158 UTC ] Prepare for db operation
+DBCA_PROGRESS : 7%
+[ 2026-11-26 09:27:06.194 UTC ] Copying database files
+DBCA_PROGRESS : 29%
+[ 2026-11-26 09:28:01.306 UTC ] Creating and starting Oracle instance
+DBCA_PROGRESS : 30%
+DBCA_PROGRESS : 33%
+DBCA_PROGRESS : 36%
+DBCA_PROGRESS : 39%
+DBCA_PROGRESS : 43%
+[ 2026-11-26 09:28:27.436 UTC ] Completing Database Creation
+DBCA_PROGRESS : 47%
+DBCA_PROGRESS : 49%
+DBCA_PROGRESS : 50%
+[ 2026-11-26 09:29:05.345 UTC ] Creating Pluggable Databases
+DBCA_PROGRESS : 54%
+DBCA_PROGRESS : 71%
+[ 2026-11-26 09:29:09.744 UTC ] Executing Post Configuration Actions
+DBCA_PROGRESS : 93%
+[ 2026-11-26 09:29:09.744 UTC ] Running Custom Scripts
+DBCA_PROGRESS : 100%
+[ 2026-11-26 09:29:10.099 UTC ] Database creation complete. For details check the logfiles at:
+ /opt/oracle/cfgtoollogs/dbca/FREE.
+Database Information:
+Global Database Name:FREE
+System Identifier(SID):FREE
+Trace file location:/opt/oracle/cfgtoollogs/dbca/FREE/trace.log_2026-11-26_09-27-03AM_124
+### cfgtoollogs/dbca/FREE/PDBCreation.log
+### cfgtoollogs/dbca/FREE/cloneDBCreation.log
+ORA-01109: database not open
+Help: https://docs.oracle.com/error-help/db/ora-01109/
+
+
+Database dismounted.
+ORACLE instance shut down.
+ORACLE instance started.
+Total System Global Area 1603392144 bytes
+Fixed Size		    5026448 bytes
+Variable Size		  402653184 bytes
+Database Buffers	 1191182336 bytes
+Redo Buffers		    4530176 bytes
+NO
+USERS
+### cfgtoollogs/dbca/FREE/customScripts.log
+### cfgtoollogs/dbca/FREE/execemx0.log
+omx
+
+
+OWNER
+--------------------------------------------------------------------------------
+OBJECT_NAME
+--------------------------------------------------------------------------------
+OBJECT_TYPE		STATUS
+----------------------- -------
+SYS
+PRVT_EMX
+PACKAGE 		VALID
+
+SYS
+PRVT_EMX
+PACKAGE BODY		VALID
+
+OWNER
+--------------------------------------------------------------------------------
+OBJECT_NAME
+--------------------------------------------------------------------------------
+OBJECT_TYPE		STATUS
+----------------------- -------
+
+PUBLIC
+PRVT_EMX
+SYNONYM 		VALID
+
+
+
+PL/SQL procedure successfully completed.
+
+
+Session altered.
+
+SQL> 
+END_RUNNING
+--------------------------------------------------------------------------------
+==== @/opt/oracle/product/26ai/dbhomeFree/rdbms/admin/execemx.sql Container:PDB$
+SEED Id:2 26-11-26 09:28:27 Proc:0 ====
+
+
+SQL> 
+END_RUNNING
+--------------------------------------------------------------------------------
+==== @/opt/oracle/product/26ai/dbhomeFree/rdbms/admin/execemx.sql Container:PDB$
+SEED Id:2 26-11-26 09:28:27 Proc:0 ====
+
+
+SQL> SQL> 
+SQL> SQL>   2  
+Session altered.
+
+SQL>   2  
+Session altered.
+
+SQL> SQL> ========== PROCESS ENDED ==========
+SQL> ========== Process Terminated by catcon ==========
+SQL> Disconnected from Oracle AI Database 26ai Free Release 23.26.3.0.0 - Develop, Learn, and Run for Free
+Version 23.26.3.0.0
+### cfgtoollogs/dbca/FREE/lockAccount.log
+XS$NULL 																																															 NONE
+DBSNMP																																																 NONE
+APPQOSSYS																																															 NONE
+GSMCATUSER																																															 NONE
+MDDATA																																																 NONE
+VECSYS																																																 NONE
+DBSFWUSER																																															 NONE
+SYSBACKUP																																															 NONE
+REMOTE_SCHEDULER_AGENT																																														 NONE
+GGSYS																																																 NONE
+ANONYMOUS																																															 NONE
+GSMUSER 																																															 NONE
+SYSRAC																																																 NONE
+GSMROOTUSER																																															 NONE
+CTXSYS																																																 NONE
+OJVMSYS 																																															 NONE
+DVSYS																																																 NONE
+DVF																																																 NONE
+AUDSYS																																																 NONE
+GSMADMIN_INTERNAL																																														 NONE
+GGSHAREDCAP																																															 NONE
+DIP																																																 NONE
+LBACSYS 																																															 NONE
+BAASSYS 																																															 NONE
+OLAPSYS 																																															 NONE
+MDSYS																																																 NONE
+SYSKM																																																 NONE
+DGPDB_INT																																															 NONE
+OUTLN																																																 NONE
+SYS$UMF 																																															 NONE
+XDB																																																 NONE
+WMSYS																																																 NONE
+SYSDG																																																 NONE
+### cfgtoollogs/dbca/FREE/plugDatabase.log
+database_running
+/opt/oracle/oradata/FREE/pdbseed/system01.dbf|SYSTEM
+/opt/oracle/oradata/FREE/pdbseed/sysaux01.dbf|SYSAUX
+/opt/oracle/oradata/FREE/pdbseed/undotbs01.dbf|UNDOTBS1
+/opt/oracle/oradata/FREE/pdbseed/temp01.dbf|TEMP
+FREEPDB1
+	 3
+NO
+TEMPORARY|NOLOGGING|LOCAL|8192|MANUAL|NO
+TEMP
+/opt/oracle/oradata/FREE/FREEPDB1/temp01.dbf|ONLINE|	  148.000|YES|8192|4194302
+1024|1024|1|-1|0|1024|UNIFORM
+READ WRITE
+### cfgtoollogs/dbca/FREE/postDBCreation.log
+catcon::catconInit2: start initializing catcon
+
+catcon::catconInit2: finished constructing connect strings
+
+catcon::catconInit2: start CDB-specific processing
+
+catcon::catconInit2: finished examining instances which can be used to run scripts/SQL statements.
+
+catcon::catconInit2: DBMS version: 23.0.0.0.0.
+
+catcon::catconInit2: started SQL*Plus processes.
+
+catcon::catconInit2: initialization completed successfully (2026-11-26 09:28:28)
+
+catcon::catconExec: start executing scripts/SQL statements
+
+catcon::catconExec_int: finished examining scripts/SQL statements to be executed.
+
+catcon::catconExec_int: will run all scripts/statements against the Root (Container CDB$ROOT) of a CDB
+
+catcon::log_script_execution: executing "@/opt/oracle/product/26ai/dbhomeFree/rdbms/admin/utlrp.sql" in container CDB$ROOT using process 0
+
+catcon::catconExec_int: run all scripts/statements against remaining 1 PDBs
+
+catcon::log_script_execution: executing "@/opt/oracle/product/26ai/dbhomeFree/rdbms/admin/utlrp.sql" in container PDB$SEED using process 0
+
+catcon::catconExec: finished executing scripts/SQL statements
+
+catcon::catconWrapUp: (PID=2603) about to free up all resources
+
+catcon::catconWrapUp: done
+
+catcon.pl: completed successfully
+Enter Password: 
+Enter Password: 
+CATALOG 										   VALID
+CATPROC 										   VALID
+RAC											   OPTION OFF
+JAVAVM											   VALID
+XML											   VALID
+CATJAVA 										   VALID
+APS											   VALID
+XDB											   VALID
+OWM											   VALID
+CONTEXT 										   VALID
+XOQ											   VALID
+SDO											   VALID
+OLS											   VALID
+DV											   VALID
+Database closed.
+Database dismounted.
+ORACLE instance shut down.
+ORACLE instance started.
+Total System Global Area 1603392144 bytes
+Fixed Size		    5026448 bytes
+Variable Size		  402653184 bytes
+Database Buffers	 1191182336 bytes
+Redo Buffers		    4530176 bytes
+Database mounted.
+Database opened.
+### cfgtoollogs/dbca/FREE/postPDBCreation.log
+TRUE
+	 1
+	 0
+FREEPDB1
+		1
+PDBADMIN
+	    0
+	 0
+### cfgtoollogs/dbca/FREE/postScripts.log
+catcon::set_log_file_base_path: ALL catcon-related output will be written to [/opt/oracle/cfgtoollogs/dbca/FREE/execemx_catcon_2495.lst]
+
+catcon::set_log_file_base_path: catcon: See [/opt/oracle/cfgtoollogs/dbca/FREE/execemx*.log] files for output generated by scripts
+
+catcon::set_log_file_base_path: catcon: See [/opt/oracle/cfgtoollogs/dbca/FREE/execemx_*.lst] files for spool files, if any
+
+catcon::catconInit2: start initializing catcon
+
+catcon::catconInit2: finished constructing connect strings
+
+catcon::catconInit2: start CDB-specific processing
+
+catcon::catconInit2: finished examining instances which can be used to run scripts/SQL statements.
+
+catcon::catconInit2: DBMS version: 23.0.0.0.0.
+
+catcon::catconInit2: started SQL*Plus processes.
+
+catcon::catconInit2: initialization completed successfully (2026-11-26 09:28:26)
+
+catcon::catconExec: start executing scripts/SQL statements
+
+catcon::catconExec_int: finished examining scripts/SQL statements to be executed.
+
+catcon::catconExec_int: will run all scripts/statements against the Root (Container CDB$ROOT) of a CDB
+
+catcon::log_script_execution: executing "@/opt/oracle/product/26ai/dbhomeFree/rdbms/admin/execemx.sql" in container CDB$ROOT using process 0
+
+catcon::catconExec_int: run all scripts/statements against remaining 1 PDBs
+
+catcon::log_script_execution: executing "@/opt/oracle/product/26ai/dbhomeFree/rdbms/admin/execemx.sql" in container PDB$SEED using process 0
+
+catcon::catconExec: finished executing scripts/SQL statements
+
+catcon::catconWrapUp: (PID=2495) about to free up all resources
+
+catcon::catconWrapUp: done
+
+catcon.pl: completed successfully
+Enter Password: 
+Enter Password: 
+### cfgtoollogs/dbca/FREE/utlfixdirs0.log
+
+SQL>   2  
+CATCONSECTION
+-----------------------------------
+==== CATCON EXEC IN CONTAINERS ====
+
+SQL> 
+BEGIN_RUNNING
+--------------------------------------------------------------------------------
+==== @/opt/oracle/product/26ai/dbhomeFree/rdbms/admin/utlfixdirs.sql Container:P
+DB$SEED Id:2 26-11-26 09:28:22 Proc:0 ====
+
+
+SQL> 
+BEGIN_RUNNING
+--------------------------------------------------------------------------------
+==== @/opt/oracle/product/26ai/dbhomeFree/rdbms/admin/utlfixdirs.sql Container:P
+DB$SEED Id:2 26-11-26 09:28:22 Proc:0 ====
+
+
+SQL>   2  
+Session altered.
+
+SQL>   2  
+Session altered.
+
+SQL> 
+Container: PDB$SEED
+
+Current  ORACLE_HOME: /opt/oracle/product/26ai/dbhomeFree
+Original ORACLE_HOME: /opt/oracle/product/26ai/dbhomeFree
+
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+END_RUNNING
+--------------------------------------------------------------------------------
+==== @/opt/oracle/product/26ai/dbhomeFree/rdbms/admin/utlfixdirs.sql Container:P
+DB$SEED Id:2 26-11-26 09:28:22 Proc:0 ====
+
+
+SQL> 
+END_RUNNING
+--------------------------------------------------------------------------------
+==== @/opt/oracle/product/26ai/dbhomeFree/rdbms/admin/utlfixdirs.sql Container:P
+DB$SEED Id:2 26-11-26 09:28:22 Proc:0 ====
+
+
+SQL> SQL> 
+SQL> SQL>   2  
+Session altered.
+
+SQL>   2  
+Session altered.
+
+SQL> SQL> ========== PROCESS ENDED ==========
+SQL> ========== Process Terminated by catcon ==========
+SQL> Disconnected from Oracle AI Database 26ai Free Release 23.26.3.0.0 - Develop, Learn, and Run for Free
+Version 23.26.3.0.0
+### cfgtoollogs/dbca/FREE/utlrp0.log
+DOC> If the number is higher than expected, please examine the error
+DOC> messages reported with each object (using SHOW ERRORS) to see if they
+DOC> point to system misconfiguration or resource constraints that must be
+DOC> fixed before attempting to recompile these objects.
+DOC>#
+
+OBJECTS WITH ERRORS
+-------------------
+		  0
+
+DOC> The following query reports the number of exceptions caught during
+DOC> recompilation. If this number is non-zero, please query the error
+DOC> messages in the table UTL_RECOMP_ERRORS to see if any of these errors
+DOC> are due to misconfiguration or resource constraints that must be
+DOC> fixed before objects can compile successfully.
+DOC> Note: Typical compilation errors (due to coding errors) are not
+DOC>	   logged into this table: they go into DBA_ERRORS instead.
+DOC>#
+
+ERRORS DURING RECOMPILATION
+---------------------------
+			  0
+
+
+Function created.
+
+
+PL/SQL procedure successfully completed.
+
+
+Function dropped.
+
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+END_RUNNING
+--------------------------------------------------------------------------------
+==== @/opt/oracle/product/26ai/dbhomeFree/rdbms/admin/utlrp.sql Container:PDB$SE
+ED Id:2 26-11-26 09:29:01 Proc:0 ====
+
+
+SQL> 
+END_RUNNING
+--------------------------------------------------------------------------------
+==== @/opt/oracle/product/26ai/dbhomeFree/rdbms/admin/utlrp.sql Container:PDB$SE
+ED Id:2 26-11-26 09:29:01 Proc:0 ====
+
+
+SQL> SQL> 
+SQL> SQL>   2  
+Session altered.
+
+SQL>   2  
+Session altered.
+
+SQL> SQL> ========== PROCESS ENDED ==========
+SQL> ========== Process Terminated by catcon ==========
+SQL> Disconnected from Oracle AI Database 26ai Free Release 23.26.3.0.0 - Develop, Learn, and Run for Free
+Version 23.26.3.0.0
+### cfgtoollogs/netca/netca_OraDBHome26aiFree-2611269AM2703.log
+
+Parsing command line arguments:
+    Parameter "orahome" = /opt/oracle/product/26ai/dbhomeFree
+    Parameter "instype" = typical
+    Parameter "inscomp" = client,oraclenet,javavm,server,ano
+    Parameter "insprtcl" = tcp
+    Parameter "cfg" = local
+    Parameter "authadp" = NO_VALUE
+    Parameter "responsefile" = /opt/oracle/product/26ai/dbhomeFree/network/install/netca_typ.rsp
+    Parameter "silent" = true
+    Parameter "orahnam" = OraHomeFree
+    Parameter "listenerparameters" = DEFAULT_SERVICE=FREE
+    Parameter "lisport" = 1521
+Done parsing command line arguments.
+Oracle Net Services Configuration:
+Profile configuration complete.
+Listener is using the port provided in the command line:1521
+Oracle Net Listener Startup:
+    Running Listener Control: 
+      /opt/oracle/product/26ai/dbhomeFree/bin/lsnrctl start LISTENER
+    Listener Control complete.
+    Listener started successfully.
+Listener configuration complete.
+Oracle Net Services configuration successful. The exit code is 0
+### cfgtoollogs/netca/netca_configure_out.log
+Netca configuration log
+
+Parsing command line arguments:
+    Parameter "orahome" = /opt/oracle/product/26ai/dbhomeFree
+    Parameter "instype" = typical
+    Parameter "inscomp" = client,oraclenet,javavm,server,ano
+    Parameter "insprtcl" = tcp
+    Parameter "cfg" = local
+    Parameter "authadp" = NO_VALUE
+    Parameter "responsefile" = /opt/oracle/product/26ai/dbhomeFree/network/install/netca_typ.rsp
+    Parameter "silent" = true
+    Parameter "orahnam" = OraHomeFree
+    Parameter "listenerparameters" = DEFAULT_SERVICE=FREE
+    Parameter "lisport" = 1521
+Done parsing command line arguments.
+Oracle Net Services Configuration:
+Profile configuration complete.
+Listener is using the port provided in the command line:1521
+Oracle Net Listener Startup:
+    Running Listener Control: 
+      /opt/oracle/product/26ai/dbhomeFree/bin/lsnrctl start LISTENER
+    Listener Control complete.
+    Listener started successfully.
+Listener configuration complete.
+Oracle Net Services configuration successful. The exit code is 0
+
+Parsing command line arguments:
+    Parameter "orahome" = /opt/oracle/product/26ai/dbhomeFree
+    Parameter "instype" = typical
+    Parameter "inscomp" = client,oraclenet,javavm,server,ano
+    Parameter "insprtcl" = tcp
+    Parameter "cfg" = local
+    Parameter "authadp" = NO_VALUE
+    Parameter "responsefile" = /opt/oracle/product/26ai/dbhomeFree/network/install/netca_typ.rsp
+    Parameter "silent" = true
+    Parameter "orahnam" = OraHomeFree
+    Parameter "listenerparameters" = DEFAULT_SERVICE=FREE
+    Parameter "lisport" = 1521
+Done parsing command line arguments.
+Oracle Net Services Configuration:
+Profile configuration complete.
+Listener is using the port provided in the command line:1521
+Oracle Net Listener Startup:
+    Running Listener Control: 
+      /opt/oracle/product/26ai/dbhomeFree/bin/lsnrctl start LISTENER
+    Listener Control complete.
+    Listener started successfully.
+Listener configuration complete.
+Oracle Net Services configuration successful. The exit code is 0
+### cfgtoollogs/netca/trace_OraDBHome26aiFree-2611269AM2703.log
+[main] [ 2026-11-26 09:27:03.462 UTC ] [ConfigureListener.isHASRunning:1809]  Is Oracle Restart running: false
+[main] [ 2026-11-26 09:27:03.462 UTC ] [ConfigureListener.listenerExists:450]  Is listener "LISTENER" already exists: false
+[main] [ 2026-11-26 09:27:03.462 UTC ] [ConfigureListener.validateEndPoint:1190]  Validating end-point: TCP:1521
+[main] [ 2026-11-26 09:27:03.462 UTC ] [ClusterUtils.isContainerEnvironment:2032]  Entering method isContainerEnvironment
+[main] [ 2026-11-26 09:27:03.462 UTC ] [OracleHome.isVersion23OrHigher:1665]  isVersion23OrHigher method begin: 
+[main] [ 2026-11-26 09:27:03.462 UTC ] [OracleHome.getVersion:1388]  OracleHome.getVersion called.  Current Version: null
+[main] [ 2026-11-26 09:27:03.463 UTC ] [InventoryUtil.getOUIInvSession:354]  setting OUI READ level to ACCESSLEVEL_READ_LOCKLESS
+[main] [ 2026-11-26 09:27:03.463 UTC ] [OracleHome.getVersion:1402]  Homeinfo /opt/oracle/product/26ai/dbhomeFree,1
+[main] [ 2026-11-26 09:27:03.478 UTC ] [OracleHome.getVersion:1419]  OracleHome.server.getVersion Version: 23.0.0.0.0
+[main] [ 2026-11-26 09:27:03.478 UTC ] [OracleHome.getVersion:1435]  Current Version From Inventory: 23.0.0.0.0
+[main] [ 2026-11-26 09:27:03.478 UTC ] [OracleHome.getVersion:1463]  Current Version from Oraversion -baseVersion: 23.0.0.0.0
+[main] [ 2026-11-26 09:27:03.478 UTC ] [OracleHome.isVersion23OrHigher:1675]  isVersion23OrHigher:true
+[main] [ 2026-11-26 09:27:03.478 UTC ] [UnixSystem.getSystemdContainer:6517]  unixcmd = /usr/bin/systemd-detect-virt --container
+[main] [ 2026-11-26 09:27:03.478 UTC ] [RuntimeExec.traceCmdEnv:577]  Calling Runtime.exec() with the command 
+[main] [ 2026-11-26 09:27:03.478 UTC ] [RuntimeExec.traceCmdEnv:579]  /usr/bin/systemd-detect-virt 
+[main] [ 2026-11-26 09:27:03.478 UTC ] [RuntimeExec.traceCmdEnv:579]  --container 
+[Thread-8] [ 2026-11-26 09:27:03.479 UTC ] [StreamReader.run:66]  In StreamReader.run 
+[main] [ 2026-11-26 09:27:03.479 UTC ] [RuntimeExec.runCommand:355]  runCommand: Waiting for the process
+[Thread-7] [ 2026-11-26 09:27:03.479 UTC ] [StreamReader.run:66]  In StreamReader.run 
+[Thread-7] [ 2026-11-26 09:27:03.481 UTC ] [StreamReader.run:74]  OUTPUT>docker
+[main] [ 2026-11-26 09:27:03.481 UTC ] [RuntimeExec.runCommand:357]  runCommand: process returns 0
+[main] [ 2026-11-26 09:27:03.482 UTC ] [RuntimeExec.runCommand:384]  RunTimeExec: error>
+[main] [ 2026-11-26 09:27:03.482 UTC ] [RuntimeExec.runCommand:410]  Returning from RunTimeExec.runCommand
+[main] [ 2026-11-26 09:27:03.482 UTC ] [UnixSystem.getSystemdContainer:6521]  After execution: ret = 0, out = docker
+[main] [ 2026-11-26 09:27:03.483 UTC ] [ClusterwareInfo.isKubernetesContainer:8255]  isKubernetesContainer : false
+[main] [ 2026-11-26 09:27:03.483 UTC ] [ClusterUtils.isContainerEnvironment:2040]  isContainerEnvironment:false
+[main] [ 2026-11-26 09:27:03.483 UTC ] [ConfigureListener.validateEndPoint:1209]  Address String : (ADDRESS=(PROTOCOL=TCP)(HOST=free-diff-t2-232630)(PORT=1521))
+[main] [ 2026-11-26 09:27:03.485 UTC ] [ConfigureListener.validateEndPoint:1213]  AddressBusy return code : 0
+[main] [ 2026-11-26 09:27:03.485 UTC ] [ConfigureListener.isPortFree:1274]  Checking if port 1521 is free on local machine...
+[main] [ 2026-11-26 09:27:03.485 UTC ] [ConfigureListener.isPortFree:1289]  InetAddress.getByName(127.0.0.1): /127.0.0.1
+[main] [ 2026-11-26 09:27:03.485 UTC ] [ConfigureListener.isPortFree:1291]  Local host IP address: free-diff-t2-232630/172.17.0.2
+[main] [ 2026-11-26 09:27:03.485 UTC ] [ConfigureListener.isPortFree:1293]  Local host name: free-diff-t2-232630
+[main] [ 2026-11-26 09:27:03.485 UTC ] [ConfigureListener.isPortFree:1304]  Address free-diff-t2-232630
+[main] [ 2026-11-26 09:27:03.486 UTC ] [ConfigureListener.isPortFree:1327]  IP Address: free-diff-t2-232630/172.17.0.2, Is IPv6 Address: false
+[main] [ 2026-11-26 09:27:03.486 UTC ] [ConfigureListener.isPortFree:1330]  IP Address: free-diff-t2-232630/172.17.0.2, Is Link-Local Address: false
+[main] [ 2026-11-26 09:27:03.486 UTC ] [ConfigureListener.isPortFree:1355]  Creating ServerSocket on Port:1521, IP Address: free-diff-t2-232630/172.17.0.2
+[main] [ 2026-11-26 09:27:03.490 UTC ] [ConfigureListener.isPortFree:1358]  Created ServerSocket successfully.
+[main] [ 2026-11-26 09:27:03.490 UTC ] [ConfigureListener.isPortFree:1371]  Creating ServerSocket on Port:1521, Local IP Address: /127.0.0.1
+[main] [ 2026-11-26 09:27:03.490 UTC ] [ConfigureListener.isPortFree:1375]  Created ServerSocket successfully.
+[main] [ 2026-11-26 09:27:03.490 UTC ] [ConfigureListener.isPortFree:1381]  Creating ServerSocket on Port:1521
+[main] [ 2026-11-26 09:27:03.490 UTC ] [ConfigureListener.isPortFree:1384]  Created ServerSocket successfully.
+[main] [ 2026-11-26 09:27:03.491 UTC ] [ConfigureListener.isPortFree:1404]  Returning is Port 1521 free: true
+[main] [ 2026-11-26 09:27:03.491 UTC ] [ConfigureListener.validateEndPoint:1247]  Validation...Complete for TCP/TCPS.
+[main] [ 2026-11-26 09:27:03.493 UTC ] [CmdlineArgs.getListenerParameters:1317]  Control parameter loaded: DEFAULT_SERVICE
+[main] [ 2026-11-26 09:27:03.493 UTC ] [ConfigureListener.typicalConfigure:366]  DEFAULT_SERVICE FREE
+[main] [ 2026-11-26 09:27:03.494 UTC ] [ConfigureListener.isPortFree:1274]  Checking if port 1521 is free on local machine...
+[main] [ 2026-11-26 09:27:03.494 UTC ] [ConfigureListener.isPortFree:1289]  InetAddress.getByName(127.0.0.1): /127.0.0.1
+[main] [ 2026-11-26 09:27:03.494 UTC ] [ConfigureListener.isPortFree:1291]  Local host IP address: free-diff-t2-232630/172.17.0.2
+[main] [ 2026-11-26 09:27:03.494 UTC ] [ConfigureListener.isPortFree:1293]  Local host name: free-diff-t2-232630
+[main] [ 2026-11-26 09:27:03.494 UTC ] [ConfigureListener.isPortFree:1304]  Address free-diff-t2-232630
+[main] [ 2026-11-26 09:27:03.494 UTC ] [ConfigureListener.isPortFree:1327]  IP Address: free-diff-t2-232630/172.17.0.2, Is IPv6 Address: false
+[main] [ 2026-11-26 09:27:03.494 UTC ] [ConfigureListener.isPortFree:1330]  IP Address: free-diff-t2-232630/172.17.0.2, Is Link-Local Address: false
+[main] [ 2026-11-26 09:27:03.494 UTC ] [ConfigureListener.isPortFree:1355]  Creating ServerSocket on Port:1521, IP Address: free-diff-t2-232630/172.17.0.2
+[main] [ 2026-11-26 09:27:03.494 UTC ] [ConfigureListener.isPortFree:1358]  Created ServerSocket successfully.
+[main] [ 2026-11-26 09:27:03.494 UTC ] [ConfigureListener.isPortFree:1371]  Creating ServerSocket on Port:1521, Local IP Address: /127.0.0.1
+[main] [ 2026-11-26 09:27:03.494 UTC ] [ConfigureListener.isPortFree:1375]  Created ServerSocket successfully.
+[main] [ 2026-11-26 09:27:03.494 UTC ] [ConfigureListener.isPortFree:1381]  Creating ServerSocket on Port:1521
+[main] [ 2026-11-26 09:27:03.494 UTC ] [ConfigureListener.isPortFree:1384]  Created ServerSocket successfully.
+[main] [ 2026-11-26 09:27:03.494 UTC ] [ConfigureListener.isPortFree:1404]  Returning is Port 1521 free: true
+[main] [ 2026-11-26 09:27:03.553 UTC ] [SilentConfigure.performSilentConfigure:214]  Typical service alias configuration.
+--- docker logs (complete)
+Specify a password to be used for database accounts. Oracle recommends that the password entered should be at least 8 characters in length, contain at least 1 uppercase character, 1 lower case character and 1 digit [0-9]. Note that the same password will be used for SYS, SYSTEM and PDBADMIN accounts:
+Confirm the password:
+Configuring Oracle Listener.
+Listener configuration succeeded.
+Configuring Oracle AI Database FREE.
+Enter SYS user password: 
+ **********************
+Enter SYSTEM user password: 
+** ********************
+Enter PDBADMIN User Password: 
+************ ************
+Prepare for db operation
+7% complete
+Copying database files
+29% complete
+Creating and starting Oracle instance
+30% complete
+33% complete
+36% complete
+39% complete
+43% complete
+Completing Database Creation
+47% complete
+49% complete
+50% complete
+Creating Pluggable Databases
+54% complete
+71% complete
+Executing Post Configuration Actions
+93% complete
+Running Custom Scripts
+100% complete
+Database creation complete. For details check the logfiles at:
+ /opt/oracle/cfgtoollogs/dbca/FREE.
+Database Information:
+Global Database Name:FREE
+System Identifier(SID):FREE
+Look at the log file "/opt/oracle/cfgtoollogs/dbca/FREE/FREE.log" for further details.
+
+Connect to Oracle AI Database using one of the connect strings:
+     Pluggable database: free-diff-t2-232630/FREEPDB1
+     Multitenant container database: free-diff-t2-232630
+
+SQL*Plus: Release 23.26.3.0.0 - Production on Thu Nov 26 09:29:10 2026
+Version 23.26.3.0.0
+
+Copyright (c) 1982, 2026, Oracle.  All rights reserved.
+
+
+Connected to:
+Oracle AI Database 26ai Free Release 23.26.3.0.0 - Develop, Learn, and Run for Free
+Version 23.26.3.0.0
+
+SQL> 
+System altered.
+
+SQL> 
+Pluggable database altered.
+
+SQL> 
+PL/SQL procedure successfully completed.
+
+SQL> SQL> 
+Session altered.
+
+SQL> 
+User created.
+
+SQL> 
+Grant succeeded.
+
+SQL> 
+Grant succeeded.
+
+SQL> 
+Grant succeeded.
+
+SQL> 
+User altered.
+
+SQL> SQL> Disconnected from Oracle AI Database 26ai Free Release 23.26.3.0.0 - Develop, Learn, and Run for Free
+Version 23.26.3.0.0
+
+SQL*Plus: Release 23.26.3.0.0 - Production on Thu Nov 26 09:29:10 2026
+Version 23.26.3.0.0
+
+Copyright (c) 1982, 2026, Oracle.  All rights reserved.
+
+
+Connected to:
+Oracle AI Database 26ai Free Release 23.26.3.0.0 - Develop, Learn, and Run for Free
+Version 23.26.3.0.0
+
+SQL> Database closed.
+Database dismounted.
+ORACLE instance shut down.
+SQL> ORACLE instance started.
+
+Total System Global Area 1603392144 bytes
+Fixed Size		    5026448 bytes
+Variable Size		  402653184 bytes
+Database Buffers	 1191182336 bytes
+Redo Buffers		    4530176 bytes
+Database mounted.
+SQL> 
+Database altered.
+
+SQL> 
+Database altered.
+
+SQL> 
+Database altered.
+
+SQL> SQL> Disconnected from Oracle AI Database 26ai Free Release 23.26.3.0.0 - Develop, Learn, and Run for Free
+Version 23.26.3.0.0
+
+Executing user defined scripts
+/opt/oracle/scripts/base/runUserScripts.sh: running /opt/oracle/scripts/extensions/setup/registerService.sh
+
+DONE: Executing user defined scripts
+
+#########################
+DATABASE IS READY TO USE!
+#########################
+The following output is now a tail of the alert.log:
+Stopping change tracking
+replication_dependency_tracking turned off (no async multimaster replication found)
+Opening with Resource Manager plan: DEFAULT_CDB_PLAN 
+CLID: P
+PDB$SEED(2):Autotune of undo retention is turned on. 
+PDB$SEED(2):Opening pdb with Resource Manager plan: DEFAULT_PLAN
+FREEPDB1(3):Autotune of undo retention is turned on. 
+FREEPDB1(3):Opening pdb with Resource Manager plan: DEFAULT_PLAN
+Completed: Pluggable database FREEPDB1 opened read write 
+Completed: ALTER DATABASE OPEN
+2026-11-26T09:29:18.538432+00:00
+===========================================================
+Dumping current patch information
+===========================================================
+No patches have been applied
+===========================================================

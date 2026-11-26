@@ -1,0 +1,72 @@
+# runtime t6: no bind mount, failing startup SQL
+# date: 2026-11-26T09:22:04Z
+# image: container-registry.oracle.com/database/free:23.26.4.0
+# digest: sha256:f5a1791bf5628fd1a97e07584ff5ac5537da5021c23e70f5083f48c8fcd6476e
+# host: Darwin arm64, docker 29.8.2
+# ------------------------------------------------------------
+# command: docker run --pull never -d --name free-diff-t6-232640 --hostname free-diff-t6-232640 -e ORACLE_PWD -v <repo>/.work/free-23-26-4/run-t6-23.26.4.0/hooks/setup:/opt/oracle/scripts/setup:ro -v <repo>/.work/free-23-26-4/run-t6-23.26.4.0/hooks/startup:/opt/oracle/scripts/startup:ro  container-registry.oracle.com/database/free@sha256:f5a1791bf5628fd1a97e07584ff5ac5537da5021c23e70f5083f48c8fcd6476e
+# ORACLE_PWD: random, not logged
+# ------------------------------------------------------------
+RESULT: ready startup-fail:found,state:exited/1 after 81s
+--- docker inspect State
+Status=exited ExitCode=1 Started=2026-11-26T09:22:04.696563846Z Finished=2026-11-26T09:22:22.469256341Z
+--- docker inspect Cmd / Mounts
+["/bin/bash","-c","exec $ORACLE_BASE/startPrebuilt.sh"] [{"Type":"bind","Source":"<repo>/.work/free-23-26-4/run-t6-23.26.4.0/hooks/setup","Destination":"/opt/oracle/scripts/setup","Mode":"ro","RW":false,"Propagation":"rprivate"},{"Type":"bind","Source":"<repo>/.work/free-23-26-4/run-t6-23.26.4.0/hooks/startup","Destination":"/opt/oracle/scripts/startup","Mode":"ro","RW":false,"Propagation":"rprivate"}]
+--- database facts: container not running, no query
+--- marker files in /opt/oracle/oradata
+MARKER-SETUP absent
+MARKER-STARTUP absent
+--- cfgtoollogs (dbca), last 60 lines per log
+(no cfgtoollogs)
+--- docker logs (complete)
+Expanding prebuilt database files.
+Starting Oracle Net Listener.
+Oracle Net Listener started.
+Starting Oracle AI Database instance FREE.
+Oracle AI Database instance FREE started.
+
+The Oracle base remains unchanged with value /opt/oracle
+
+SQL*Plus: Release 23.26.4.0.0 - Production on Thu Nov 26 09:22:22 2026
+Version 23.26.4.0.0
+
+Copyright (c) 1982, 2026, Oracle.  All rights reserved.
+
+
+Connected to:
+Oracle AI Database 26ai Free Release 23.26.4.0.0 - Develop, Learn, and Run for Free
+Version 23.26.4.0.0
+
+SQL> 
+User altered.
+
+SQL> 
+User altered.
+
+SQL> 
+Session altered.
+
+SQL> 
+User altered.
+
+SQL> Disconnected from Oracle AI Database 26ai Free Release 23.26.4.0.0 - Develop, Learn, and Run for Free
+Version 23.26.4.0.0
+The Oracle base remains unchanged with value /opt/oracle
+#########################
+DATABASE IS READY TO USE!
+#########################
+
+Executing user defined scripts
+/opt/oracle/scripts/base/runUserScripts.sh: running /opt/oracle/scripts/startup/01_fail.sql
+MARKER-STARTUP-FAIL running
+SELECT * FROM free_diff_no_such_table
+              *
+ERROR at line 1:
+ORA-00942: table or view "SYS"."FREE_DIFF_NO_SUCH_TABLE" does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+
+
+
+
+DONE: Executing user defined scripts
+
