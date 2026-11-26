@@ -13,6 +13,12 @@ All notable changes to this project are documented here. Format based on
   `common/config/target-levels.env`. dict19 creates `PDB1` with a setup hook and the snapshot waits for an open PDB
 - `common/scripts/dict_snapshot.sh` / `.py`, `common/sql/dict_snapshot.sql`; `lab_verify.sh` profile `snapshot`
   (requires NOARCHIVELOG, skips baseline checks)
+- Lab `forensics19`: throwaway 19c counterpart of `forensics` (19c EE `trivadis/ora_db:19.27.0.0`, CDB `FX19` +
+  `FXPDB1`, port 1577) for the delphi-oradba verification of the legacy forensics capture on 19c
+- Lab `forensics`: throwaway lab for Oracle forensics and data-recovery recipes (delphi-oradba
+  `topics/forensics/recipes/`) on top of `base26` (26ai Free 23.26.3, CDB `FREE` + `FXPDB1`, port 1576),
+  archivelog, minimal supplemental logging, small tablespace `FX_DATA`. May be destroyed and rebuilt at will;
+  ships no scenario data - recipes create their evidence at runtime
 
 ### Fixed
 

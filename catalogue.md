@@ -12,6 +12,8 @@ One line per lab. A demo names its lab (`requires: <lab>`), it does not bring it
 | `dv26` | Database Vault test lab (throwaway): 26ai Free, CDB `FREE` + `DVPDB1` (SCOTT, LAB_ADMIN, LAB_USER, common `C##DV_OWNER` / `C##DV_ACCTMGR`), DV not configured | `oracle-free-labs:latest` (23.26.3) | 1574 | demo `database-vault` |
 | `dict26` | single-use dictionary lab (throwaway, `make snapshot`): 26ai Free, CDB `FREE` + `FREEPDB1`, no lab users, purged after each run | `free:23.26.3.0` (behind 23.26.4) | 1575 | `aitk oracle-check` snapshots |
 | `dict19` | single-use dictionary lab (throwaway, `make snapshot`): 19c EE, CDB `CDB19` + `PDB1`, purged after each run | `trivadis/ora_db:19.27.0.0` (behind 19.33) | 1563 | `aitk oracle-check` snapshots |
+| `forensics` | Throwaway forensics lab: 26ai Free, CDB `FREE` + `FXPDB1` (archivelog, supplemental logging, tablespace `FX_DATA`); may be destroyed and rebuilt | `oracle-free-labs:latest` (23.26.3) | 1576 | delphi-oradba forensics recipes |
+| `forensics19` | Throwaway 19c counterpart of `forensics`: 19c EE, CDB `FX19` + `FXPDB1` (supplemental logging, tablespace `FX_DATA`); may be destroyed and rebuilt | `trivadis/ora_db:19.27.0.0` | 1577 | delphi-oradba verification (19c) |
 <!-- markdownlint-restore -->
 
 ## Planned (not in M0)
