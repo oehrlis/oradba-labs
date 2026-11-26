@@ -63,7 +63,5 @@ Questions:
 - Is there still a supported way to create a fresh database in the Full image (own SID, CDB character set, setup
   scripts), or should the create path in `runOracle.sh` / `createDB.sh` be removed?
 
-For my labs I stay on 23.26.3.0 for now.
-
 Thanks and best regards,
 Stefan
