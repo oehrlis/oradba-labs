@@ -1,14 +1,15 @@
 # Mail draft - Free 23.26.4.0 container image
 
-Status: draft, not sent. Every statement below is backed by a file in this folder (see `README.md`). The personal
-opening line from the first draft (conversation at UKOUG) is left out because this repo is public; add it before
-sending.
+Status: draft, not sent. Every statement below is backed by a file in this folder (see `README.md`).
 
 Subject: Oracle AI Database Free 23.26.4.0 container image - registry docs describe 23.26.3 behaviour
 
 ---
 
 Hi Gerald, hi Martin,
+
+I asked Chris Saxon about this at UKOUG; he was not aware of the change either, so I am reaching out to you
+directly.
 
 Since `container-registry.oracle.com/database/free:23.26.4.0` (= `latest`, digest
 `sha256:f5a1791bf5628fd1a97e07584ff5ac5537da5021c23e70f5083f48c8fcd6476e`) the Full image handles an empty data

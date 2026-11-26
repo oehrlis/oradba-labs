@@ -32,7 +32,7 @@ Nur offene Tasks. Erledigtes steht im CHANGELOG, in `docs/architecture.md` und i
     `runOracle.sh` direkt: DBT-10508. **Neu:** `ORACLE_SID` != FREE startet gar nicht (`RELINK_BINARY_FILE` und
     `CONFIG_RSP` im Image nicht gesetzt, Abbruch vor dbca) - eigene SID gibt es auf 23.26.4 nicht
 - [ ] Mail Free 23.26.4 an Gerald Venzl / Martin Bach: `docs/evidence/free-23-26-4/mail-draft.md` reviewen,
-  UKOUG-Satz ergaenzen, nach dem Push des Evidenz-Commits senden (der Link zeigt auf GitHub) [P2]
+  nach dem Push des Evidenz-Commits senden (der Link zeigt auf GitHub). Chris Saxon (UKOUG) wusste nichts [P2]
 
 ## Wartet
 
